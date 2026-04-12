@@ -1,0 +1,112 @@
+// lib/api.ts
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const TOKEN   = process.env.NEXT_PUBLIC_API_TOKEN || '';
+
+export async function apiFetch<T>(endpoint: string): Promise<T> {
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    headers: {
+      'Authorization': `Bearer ${TOKEN}`,
+      'Accept':        'application/json',
+      'Content-Type':  'application/json',
+    },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    throw new Error(`API error ${res.status} on ${endpoint}`);
+  }
+
+  return res.json();
+}
+
+// Types partagés
+export interface FleetStatus {
+  on_trip:     number;
+  boarding:    number;
+  available:   number;
+  maintenance: number;
+  total:       number;
+}
+
+export interface DriversStatus {
+  on_duty:   number;
+  available: number;
+  resting:   number;
+  on_leave:  number;
+}
+
+export interface AlertsSummary {
+  critical: number;
+  warning:  number;
+  info:     number;
+  total:    number;
+  latest:   Alert[];
+}
+
+export interface Alert {
+  id:           number;
+  type:         string;
+  severity:     'critical' | 'warning' | 'info';
+  message:      string;
+  entity_type:  string;
+  entity_id:    number;
+  created_at:   string;
+}
+
+export interface FinanceSummary {
+  fuel_cost_today_fcfa:  number;
+  pending_vouchers:      number;
+  revenue_today_fcfa:    number;
+}
+
+export interface LiveDeparture {
+  id:                  number;
+  route:               string;
+  route_code:          string;
+  vehicle:             string;
+  driver:              string;
+  status:              'boarding' | 'departed';
+  boarding_gate:       string | null;
+  departure_datetime:  string;
+  estimated_arrival:   string;
+  actual_departure:    string | null;
+  delay_minutes:       number | null;
+}
+
+export interface DashboardLive {
+  fleet:        FleetStatus;
+  drivers:      DriversStatus;
+  alerts:       AlertsSummary;
+  finance:      FinanceSummary;
+  departures:   LiveDeparture[];
+  generated_at: string;
+}
+
+export interface RentabiliteLine {
+  route_code:        string;
+  route_name:        string;
+  departures_count:  number;
+  revenue_fcfa:      number;
+  fuel_cost_fcfa:    number;
+  driver_cost_fcfa:  number;
+  toll_cost_fcfa:    number;
+  net_profit_fcfa:   number;
+  margin_percent:    number;
+}
+
+export interface RentabiliteData {
+  date:   string;
+  lines:  RentabiliteLine[];
+  totals: { revenue_fcfa: number; fuel_cost_fcfa: number; net_profit_fcfa: number };
+}
+
+export function formatFCFA(n: number): string {
+  return new Intl.NumberFormat('fr-FR').format(Math.round(n)) + ' F';
+}
+
+export function timeAgo(iso: string): string {
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diff < 60)  return `${diff}s`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}min`;
+  return `${Math.floor(diff / 3600)}h`;
+}
