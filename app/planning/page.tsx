@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { useRoutes, useDepartures, Route, Departure } from '@/hooks/usePlanning';
 import { formatFCFA } from '@/lib/api';
+import { FormCreateRoute, FormAddRouteStop, FormCreateDeparture, FormUpdateDepartureStatus } from '@/components/planning/PlanningForms';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function formatTime(iso: string | null): string {
@@ -270,6 +271,11 @@ export default function PlanningPage() {
   const [statusFilter, setStatusFilter]   = useState('');
   const [searchQuery, setSearchQuery]     = useState('');
   const [activeTab, setActiveTab]         = useState<'departures' | 'routes'>('departures');
+  const [showCreateRoute, setShowCreateRoute] = useState(false);
+  const [showCreateDeparture, setShowCreateDeparture] = useState(false);
+  const [showUpdateStatus, setShowUpdateStatus] = useState(false);
+  const [selectedRouteForStop, setSelectedRouteForStop] = useState<number | null>(null);
+  const [showStopForm, setShowStopForm] = useState(false);
 
   const { data: routesData, isLoading: routesLoading } = useRoutes();
 
@@ -395,6 +401,8 @@ export default function PlanningPage() {
               {/* Filtres */}
               <div className="sticky top-0 z-10 bg-[#060A14]/95 backdrop-blur-sm border-b border-slate-800/40 px-6 py-3">
                 <div className="flex flex-wrap items-center gap-3">
+                  <button onClick={() => setShowCreateDeparture(true)} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">+ Nouveau départ</button>
+                  <button onClick={() => setShowUpdateStatus(true)} className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white">Éditer statut</button>
                   {/* Date */}
                   <div className="flex items-center gap-2">
                     <label className="text-[10px] text-slate-500 uppercase tracking-wider font-[family-name:var(--font-syne)]">
@@ -470,6 +478,9 @@ export default function PlanningPage() {
           {/* ── Tab Lignes ── */}
           {activeTab === 'routes' && (
             <div className="flex-1 overflow-y-auto p-6">
+              <div className="mb-4 flex justify-end">
+                <button onClick={() => setShowCreateRoute(true)} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white">+ Nouvelle ligne</button>
+              </div>
               {routesLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-48" />)}
@@ -550,6 +561,9 @@ export default function PlanningPage() {
                           <p className="text-[10px] text-slate-600 mt-0.5">Départs/jour</p>
                         </div>
                       </div>
+                      <div className="mt-4 flex gap-2">
+                        <button onClick={() => { setSelectedRouteForStop(route.id); setShowStopForm(true); }} className="rounded-lg border border-purple-500/30 bg-purple-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-purple-400">+ Arrêt</button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -558,6 +572,66 @@ export default function PlanningPage() {
           )}
         </div>
       </div>
+
+      {showCreateRoute && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-[#080D1A] p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Créer une ligne</h3>
+                <p className="text-xs text-slate-500">Ajoutez une nouvelle ligne au réseau</p>
+              </div>
+              <button onClick={() => setShowCreateRoute(false)} className="text-sm text-slate-400">✕</button>
+            </div>
+            <FormCreateRoute onSuccess={() => { setShowCreateRoute(false); setActiveTab('routes'); }} />
+          </div>
+        </div>
+      )}
+
+      {showCreateDeparture && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-[#080D1A] p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Créer un départ</h3>
+                <p className="text-xs text-slate-500">Programmez un nouveau départ manuel</p>
+              </div>
+              <button onClick={() => setShowCreateDeparture(false)} className="text-sm text-slate-400">✕</button>
+            </div>
+            <FormCreateDeparture onSuccess={() => { setShowCreateDeparture(false); }} />
+          </div>
+        </div>
+      )}
+
+      {showUpdateStatus && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-800 bg-[#080D1A] p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Mettre à jour un statut</h3>
+                <p className="text-xs text-slate-500">Changez l’état d’un départ</p>
+              </div>
+              <button onClick={() => setShowUpdateStatus(false)} className="text-sm text-slate-400">✕</button>
+            </div>
+            <FormUpdateDepartureStatus onSuccess={() => { setShowUpdateStatus(false); }} />
+          </div>
+        </div>
+      )}
+
+      {showStopForm && selectedRouteForStop && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-800 bg-[#080D1A] p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Ajouter un arrêt</h3>
+                <p className="text-xs text-slate-500">Ajoutez un point intermédiaire à une ligne dynamique</p>
+              </div>
+              <button onClick={() => { setShowStopForm(false); setSelectedRouteForStop(null); }} className="text-sm text-slate-400">✕</button>
+            </div>
+            <FormAddRouteStop routeId={selectedRouteForStop} onSuccess={() => { setShowStopForm(false); setSelectedRouteForStop(null); }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

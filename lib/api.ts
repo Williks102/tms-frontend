@@ -6,15 +6,19 @@ function getToken(): string {
   return localStorage.getItem('tms_token') || process.env.NEXT_PUBLIC_API_TOKEN || '';
 }
 
-export async function apiFetch<T>(endpoint: string): Promise<T> {
+export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
 
+  const headers = new Headers(options.headers || {});
+  headers.set('Authorization', `Bearer ${token}`);
+  headers.set('Accept', 'application/json');
+  if (!headers.has('Content-Type') && options.body) {
+    headers.set('Content-Type', 'application/json');
+  }
+
   const res = await fetch(`${API_URL}${endpoint}`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept':        'application/json',
-      'Content-Type':  'application/json',
-    },
+    ...options,
+    headers,
     cache: 'no-store',
   });
 

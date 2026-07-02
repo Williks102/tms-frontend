@@ -5,6 +5,7 @@ import {
   useDrivers, useDriverDetail, useMonthlyRanking,
   Driver, TripStat, MonthlyScore,
 } from '@/hooks/useDrivers';
+import { FormChangeDriverStatus, FormCreateDriver, FormUploadDriverDocument } from '@/components/drivers/DriverForms';
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
@@ -361,6 +362,7 @@ export default function DriversPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery]   = useState('');
   const [rightPanel, setRightPanel]     = useState<'detail' | 'ranking'>('ranking');
+  const [actionView, setActionView]     = useState<'create' | 'document' | 'status' | null>(null);
 
   const params: Record<string, string> = {};
   if (statusFilter) params.status = statusFilter;
@@ -402,6 +404,19 @@ export default function DriversPage() {
           ))}
         </div>
       </header>
+
+      <div className="border-b border-slate-800/60 bg-[#080D1A] p-4">
+        <div className="mb-3 flex gap-2">
+          {['create','document','status'].map((action) => (
+            <button key={action} onClick={() => setActionView(action as any)} className={`rounded-lg px-3 py-2 text-xs font-semibold ${actionView === action ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
+              {action === 'create' ? 'Créer chauffeur' : action === 'document' ? 'Ajouter document' : 'Changer statut'}
+            </button>
+          ))}
+        </div>
+        {actionView === 'create' && <FormCreateDriver onSuccess={() => setActionView(null)} />}
+        {actionView === 'document' && selectedId && <FormUploadDriverDocument driverId={selectedId} onSuccess={() => setActionView(null)} />}
+        {actionView === 'status' && selectedId && <FormChangeDriverStatus driverId={selectedId} onSuccess={() => setActionView(null)} />}
+      </div>
 
       <div className="flex h-[calc(100vh-3.5rem)]">
         {/* Liste */}

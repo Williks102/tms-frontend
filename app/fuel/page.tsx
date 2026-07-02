@@ -5,6 +5,8 @@ import {
   useFuelVouchers, useMaintenancePlans, useMaintenanceDue,
   FuelVoucher, MaintenancePlan,
 } from '@/hooks/useFuel';
+import { FormApproveFuelVoucher, FormRecordFuelConsumption, FormRejectFuelVoucher, FormRequestFuelVoucher } from '@/components/fuel/FuelForms';
+import { FormCreateMaintenancePlan, FormRecordMaintenance } from '@/components/fuel/MaintenanceForms';
 
 // ── Configs ────────────────────────────────────────────────────────────────
 const VOUCHER_STATUS_CFG = {
@@ -384,6 +386,7 @@ export default function FuelPage() {
   const [statusFilter, setStatusFilter]       = useState('');
   const [selectedVoucher, setSelectedVoucher] = useState<FuelVoucher | null>(null);
   const [maintenanceFilter, setMaintenanceFilter] = useState('');
+  const [actionView, setActionView]           = useState<'voucher' | 'approve' | 'reject' | 'consumption' | 'plan' | 'record' | null>(null);
 
   const voucherParams: Record<string, string> = {};
   if (statusFilter) voucherParams.status = statusFilter;
@@ -431,6 +434,30 @@ export default function FuelPage() {
           ))}
         </div>
       </header>
+
+      <div className="border-b border-slate-800/60 bg-[#080D1A] p-4">
+        <div className="mb-3 flex flex-wrap gap-2">
+          {activeTab === 'vouchers' ? (
+            ['voucher','approve','reject','consumption'].map((action) => (
+              <button key={action} onClick={() => setActionView(action as any)} className={`rounded-lg px-3 py-2 text-xs font-semibold ${actionView === action ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
+                {action === 'voucher' ? 'Nouveau bon' : action === 'approve' ? 'Approuver' : action === 'reject' ? 'Refuser' : 'Consommation'}
+              </button>
+            ))
+          ) : (
+            ['plan','record'].map((action) => (
+              <button key={action} onClick={() => setActionView(action as any)} className={`rounded-lg px-3 py-2 text-xs font-semibold ${actionView === action ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
+                {action === 'plan' ? 'Nouveau plan' : 'Intervention'}
+              </button>
+            ))
+          )}
+        </div>
+        {activeTab === 'vouchers' && actionView === 'voucher' && <FormRequestFuelVoucher onSuccess={() => setActionView(null)} />}
+        {activeTab === 'vouchers' && actionView === 'approve' && selectedVoucher && <FormApproveFuelVoucher voucherId={selectedVoucher.id} onSuccess={() => setActionView(null)} />}
+        {activeTab === 'vouchers' && actionView === 'reject' && selectedVoucher && <FormRejectFuelVoucher voucherId={selectedVoucher.id} onSuccess={() => setActionView(null)} />}
+        {activeTab === 'vouchers' && actionView === 'consumption' && <FormRecordFuelConsumption onSuccess={() => setActionView(null)} />}
+        {activeTab === 'maintenance' && actionView === 'plan' && <FormCreateMaintenancePlan onSuccess={() => setActionView(null)} />}
+        {activeTab === 'maintenance' && actionView === 'record' && <FormRecordMaintenance onSuccess={() => setActionView(null)} />}
+      </div>
 
       {/* Tabs */}
       <div className="flex border-b border-slate-800/60 px-6 bg-[#080D1A]">

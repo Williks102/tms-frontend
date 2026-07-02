@@ -5,6 +5,7 @@ import {
   useIncidents, useIncidentDetail, useIncidentStats,
   useQualityDrivers, Incident, IncidentAction,
 } from '@/hooks/useIncidents';
+import { FormCreateIncident, FormAddIncidentAction, FormUpdateIncidentStatus } from '@/components/incidents/IncidentForms';
 
 // ── Configs ────────────────────────────────────────────────────────────────
 const SEVERITY_CFG = {
@@ -421,6 +422,9 @@ export default function IncidentsPage() {
   const [categoryFilter, setCategoryFilter]     = useState('');
   const [searchQuery, setSearchQuery]           = useState('');
   const [rightPanel, setRightPanel]             = useState<'stats' | 'detail'>('stats');
+  const [showCreateIncident, setShowCreateIncident] = useState(false);
+  const [showActionForm, setShowActionForm] = useState(false);
+  const [showStatusForm, setShowStatusForm] = useState(false);
 
   const params: Record<string, string> = {};
   if (severityFilter)  params.severity = severityFilter;
@@ -465,6 +469,13 @@ export default function IncidentsPage() {
         </div>
 
         <div className="ml-auto hidden md:flex items-center gap-3">
+          <button onClick={() => setShowCreateIncident(true)} className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white">+ Déclarer</button>
+          {selectedIncident && (
+            <>
+              <button onClick={() => setShowActionForm(true)} className="rounded-lg bg-orange-600 px-3 py-2 text-xs font-semibold text-white">+ Action</button>
+              <button onClick={() => setShowStatusForm(true)} className="rounded-lg bg-slate-700 px-3 py-2 text-xs font-semibold text-white">État</button>
+            </>
+          )}
           {[
             { label: 'Total',    value: stats.total,    color: 'text-slate-400'   },
             { label: 'Ouverts',  value: stats.open,     color: 'text-red-400'     },

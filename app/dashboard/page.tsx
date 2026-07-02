@@ -273,7 +273,7 @@ export default function DashboardPage() {
             { id: 'live',        label: '🚌 Départs Live',     count: live?.departures.length },
             { id: 'alerts',      label: '⚠ Alertes',           count: live?.alerts.total, red: hasCritical },
             { id: 'rentabilite', label: '📊 Rentabilité',       count: rentabilite?.lines.length },
-          ] as const).map((tab) => (
+          ] as Array<{ id: 'live' | 'alerts' | 'rentabilite'; label: string; count: number | undefined; red?: boolean }>).map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
