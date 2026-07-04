@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useRoutes, useDepartures, Route, Departure } from '@/hooks/usePlanning';
 import { formatFCFA } from '@/lib/api';
 import { FormCreateRoute, FormAddRouteStop, FormCreateDeparture, FormUpdateDepartureStatus } from '@/components/planning/PlanningForms';
+import { usePermissions } from '@/lib/permissions';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function formatTime(iso: string | null): string {
@@ -266,6 +267,8 @@ function DepartureRow({ dep }: { dep: Departure }) {
 // PAGE PLANNING
 // ══════════════════════════════════════════════════════════════════════════
 export default function PlanningPage() {
+  const { can } = usePermissions();
+  const canWrite = can('planningWrite');
   const [selectedRoute, setSelectedRoute] = useState<number | null>(null);
   const [dateFilter, setDateFilter]       = useState(new Date().toISOString().split('T')[0]);
   const [statusFilter, setStatusFilter]   = useState('');
@@ -401,8 +404,12 @@ export default function PlanningPage() {
               {/* Filtres */}
               <div className="sticky top-0 z-10 bg-[#060A14]/95 backdrop-blur-sm border-b border-slate-800/40 px-6 py-3">
                 <div className="flex flex-wrap items-center gap-3">
-                  <button onClick={() => setShowCreateDeparture(true)} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">+ Nouveau départ</button>
-                  <button onClick={() => setShowUpdateStatus(true)} className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white">Éditer statut</button>
+                  {canWrite && (
+                    <>
+                      <button onClick={() => setShowCreateDeparture(true)} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">+ Nouveau départ</button>
+                      <button onClick={() => setShowUpdateStatus(true)} className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white">Éditer statut</button>
+                    </>
+                  )}
                   {/* Date */}
                   <div className="flex items-center gap-2">
                     <label className="text-[10px] text-slate-500 uppercase tracking-wider font-[family-name:var(--font-syne)]">
@@ -478,9 +485,11 @@ export default function PlanningPage() {
           {/* ── Tab Lignes ── */}
           {activeTab === 'routes' && (
             <div className="flex-1 overflow-y-auto p-6">
-              <div className="mb-4 flex justify-end">
-                <button onClick={() => setShowCreateRoute(true)} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white">+ Nouvelle ligne</button>
-              </div>
+              {canWrite && (
+                <div className="mb-4 flex justify-end">
+                  <button onClick={() => setShowCreateRoute(true)} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white">+ Nouvelle ligne</button>
+                </div>
+              )}
               {routesLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-48" />)}
@@ -561,9 +570,11 @@ export default function PlanningPage() {
                           <p className="text-[10px] text-slate-600 mt-0.5">Départs/jour</p>
                         </div>
                       </div>
-                      <div className="mt-4 flex gap-2">
-                        <button onClick={() => { setSelectedRouteForStop(route.id); setShowStopForm(true); }} className="rounded-lg border border-purple-500/30 bg-purple-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-purple-400">+ Arrêt</button>
-                      </div>
+                      {canWrite && (
+                        <div className="mt-4 flex gap-2">
+                          <button onClick={() => { setSelectedRouteForStop(route.id); setShowStopForm(true); }} className="rounded-lg border border-purple-500/30 bg-purple-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-purple-400">+ Arrêt</button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

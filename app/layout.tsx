@@ -1,6 +1,8 @@
 // app/layout.tsx — version finale avec logout
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { Syne, JetBrains_Mono } from 'next/font/google';
+import { PAGE_ACCESS, isKnownRole } from '@/lib/pageAccess';
 import './globals.css';
 
 const syne = Syne({
@@ -21,14 +23,23 @@ export const metadata: Metadata = {
 };
 
 // ── Composant sidebar (Server Component) ──────────────────────────────────
-function Sidebar() {
-  const navLinks = [
+async function Sidebar() {
+  const cookieStore = await cookies();
+  const roleRaw     = cookieStore.get('tms_role')?.value;
+  const role        = isKnownRole(roleRaw) ? roleRaw : undefined;
+
+  const allNavLinks = [
     { href: '/dashboard', icon: '◈', label: 'Dashboard'  },
     { href: '/planning',  icon: '⊞', label: 'Planning'   },
     { href: '/drivers',   icon: '◉', label: 'Chauffeurs' },
     { href: '/fuel',      icon: '⛽', label: 'Carburant'  },
     { href: '/incidents', icon: '⚡', label: 'Incidents'  },
+    { href: '/tickets',   icon: '🎫', label: 'Billets'    },
   ];
+
+  const navLinks = allNavLinks.filter(
+    link => !role || (PAGE_ACCESS[link.href]?.includes(role) ?? true)
+  );
 
   return (
     <aside className="w-16 lg:w-56 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A] flex flex-col">

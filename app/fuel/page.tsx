@@ -7,6 +7,7 @@ import {
 } from '@/hooks/useFuel';
 import { FormApproveFuelVoucher, FormRecordFuelConsumption, FormRejectFuelVoucher, FormRequestFuelVoucher } from '@/components/fuel/FuelForms';
 import { FormCreateMaintenancePlan, FormRecordMaintenance } from '@/components/fuel/MaintenanceForms';
+import { usePermissions } from '@/lib/permissions';
 
 // ── Configs ────────────────────────────────────────────────────────────────
 const VOUCHER_STATUS_CFG = {
@@ -382,6 +383,10 @@ function FuelSummaryPanel({ vouchers }: { vouchers: FuelVoucher[] }) {
 // PAGE CARBURANT
 // ══════════════════════════════════════════════════════════════════════════
 export default function FuelPage() {
+  const { can } = usePermissions();
+  const canVouchers    = can('fuelVouchersWrite');
+  const canConsumption = can('fuelConsumption');
+  const canMaintenance = can('maintenanceWrite');
   const [activeTab, setActiveTab]             = useState<'vouchers' | 'maintenance'>('vouchers');
   const [statusFilter, setStatusFilter]       = useState('');
   const [selectedVoucher, setSelectedVoucher] = useState<FuelVoucher | null>(null);
@@ -438,13 +443,15 @@ export default function FuelPage() {
       <div className="border-b border-slate-800/60 bg-[#080D1A] p-4">
         <div className="mb-3 flex flex-wrap gap-2">
           {activeTab === 'vouchers' ? (
-            ['voucher','approve','reject','consumption'].map((action) => (
+            (['voucher','approve','reject','consumption'] as const)
+              .filter(action => action === 'consumption' ? canConsumption : canVouchers)
+              .map((action) => (
               <button key={action} onClick={() => setActionView(action as any)} className={`rounded-lg px-3 py-2 text-xs font-semibold ${actionView === action ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
                 {action === 'voucher' ? 'Nouveau bon' : action === 'approve' ? 'Approuver' : action === 'reject' ? 'Refuser' : 'Consommation'}
               </button>
             ))
           ) : (
-            ['plan','record'].map((action) => (
+            canMaintenance && (['plan','record'] as const).map((action) => (
               <button key={action} onClick={() => setActionView(action as any)} className={`rounded-lg px-3 py-2 text-xs font-semibold ${actionView === action ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
                 {action === 'plan' ? 'Nouveau plan' : 'Intervention'}
               </button>

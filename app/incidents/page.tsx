@@ -6,6 +6,7 @@ import {
   useQualityDrivers, Incident, IncidentAction,
 } from '@/hooks/useIncidents';
 import { FormCreateIncident, FormAddIncidentAction, FormUpdateIncidentStatus } from '@/components/incidents/IncidentForms';
+import { usePermissions } from '@/lib/permissions';
 
 // ── Configs ────────────────────────────────────────────────────────────────
 const SEVERITY_CFG = {
@@ -416,6 +417,9 @@ function StatsPanel() {
 // PAGE INCIDENTS
 // ══════════════════════════════════════════════════════════════════════════
 export default function IncidentsPage() {
+  const { can } = usePermissions();
+  const canReport = can('incidentsReport');
+  const canManage = can('incidentsManage');
   const [selectedIncident, setSelectedIncident] = useState<number | null>(null);
   const [severityFilter, setSeverityFilter]     = useState('');
   const [statusFilter, setStatusFilter]         = useState('');
@@ -431,7 +435,7 @@ export default function IncidentsPage() {
   if (statusFilter)    params.status   = statusFilter;
   if (categoryFilter)  params.category = categoryFilter;
 
-  const { data: incidentsData, isLoading } = useIncidents(params);
+  const { data: incidentsData, isLoading, mutate } = useIncidents(params);
   const incidents = incidentsData?.data ?? [];
 
   const filtered = useMemo(() => {
@@ -469,11 +473,17 @@ export default function IncidentsPage() {
         </div>
 
         <div className="ml-auto hidden md:flex items-center gap-3">
-          <button onClick={() => setShowCreateIncident(true)} className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white">+ Déclarer</button>
+          {canReport && (
+            <button onClick={() => setShowCreateIncident(true)} className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white">+ Déclarer</button>
+          )}
           {selectedIncident && (
             <>
-              <button onClick={() => setShowActionForm(true)} className="rounded-lg bg-orange-600 px-3 py-2 text-xs font-semibold text-white">+ Action</button>
-              <button onClick={() => setShowStatusForm(true)} className="rounded-lg bg-slate-700 px-3 py-2 text-xs font-semibold text-white">État</button>
+              {canReport && (
+                <button onClick={() => setShowActionForm(true)} className="rounded-lg bg-orange-600 px-3 py-2 text-xs font-semibold text-white">+ Action</button>
+              )}
+              {canManage && (
+                <button onClick={() => setShowStatusForm(true)} className="rounded-lg bg-slate-700 px-3 py-2 text-xs font-semibold text-white">État</button>
+              )}
             </>
           )}
           {[
@@ -617,6 +627,51 @@ export default function IncidentsPage() {
           </div>
         </div>
       </div>
+
+      {showCreateIncident && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-[#080D1A] p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Déclarer un incident</h3>
+                <p className="text-xs text-slate-500">Signalez un nouvel incident</p>
+              </div>
+              <button onClick={() => setShowCreateIncident(false)} className="text-sm text-slate-400">✕</button>
+            </div>
+            <FormCreateIncident onSuccess={() => { setShowCreateIncident(false); mutate(); }} />
+          </div>
+        </div>
+      )}
+
+      {showActionForm && selectedIncident && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-800 bg-[#080D1A] p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Ajouter une action corrective</h3>
+                <p className="text-xs text-slate-500">Incident #{selectedIncident}</p>
+              </div>
+              <button onClick={() => setShowActionForm(false)} className="text-sm text-slate-400">✕</button>
+            </div>
+            <FormAddIncidentAction incidentId={selectedIncident} onSuccess={() => { setShowActionForm(false); mutate(); }} />
+          </div>
+        </div>
+      )}
+
+      {showStatusForm && selectedIncident && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-800 bg-[#080D1A] p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Changer le statut</h3>
+                <p className="text-xs text-slate-500">Incident #{selectedIncident}</p>
+              </div>
+              <button onClick={() => setShowStatusForm(false)} className="text-sm text-slate-400">✕</button>
+            </div>
+            <FormUpdateIncidentStatus incidentId={selectedIncident} onSuccess={() => { setShowStatusForm(false); mutate(); }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

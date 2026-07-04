@@ -33,7 +33,25 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
   }
 
   if (!res.ok) {
-    throw new Error(`API error ${res.status} on ${endpoint}`);
+    let errorMessage = `API error ${res.status} on ${endpoint}`;
+    try {
+      const errorData = await res.json();
+      // 422 Unprocessable Entity — validation errors
+      if (res.status === 422 && errorData.errors) {
+        const validationErrors = Object.entries(errorData.errors)
+          .map(([field, messages]: [string, any]) => {
+            const msgs = Array.isArray(messages) ? messages : [messages];
+            return `${field}: ${msgs.join(', ')}`;
+          })
+          .join(' | ');
+        errorMessage = validationErrors || errorMessage;
+      } else if (errorData.message) {
+        errorMessage = errorData.message;
+      }
+    } catch {
+      // Si la réponse n'est pas du JSON, utiliser le message générique
+    }
+    throw new Error(errorMessage);
   }
 
   return res.json();

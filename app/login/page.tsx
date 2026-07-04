@@ -15,6 +15,12 @@ function saveTokenToCookie(token: string): void {
   document.cookie = `tms_token=${token}; path=/; expires=${expires.toUTCString()}; SameSite=Lax`;
 }
 
+function saveRoleToCookie(role: string): void {
+  const expires = new Date();
+  expires.setDate(expires.getDate() + 7);
+  document.cookie = `tms_role=${role}; path=/; expires=${expires.toUTCString()}; SameSite=Lax`;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail]       = useState('');
@@ -43,10 +49,11 @@ export default function LoginPage() {
         return;
       }
 
-      // Sauvegarde token dans localStorage ET cookie (pour le middleware)
+      // Sauvegarde token/rôle dans localStorage ET cookie (pour le proxy et le layout serveur)
       localStorage.setItem('tms_token', data.token);
       localStorage.setItem('tms_user',  JSON.stringify(data.user));
       saveTokenToCookie(data.token);
+      saveRoleToCookie(data.user.role);
 
       router.push('/dashboard');
       router.refresh();
@@ -166,6 +173,8 @@ export default function LoginPage() {
                 { role: 'Manager',    email: 'manager@tms-ci.com'    },
                 { role: 'Dispatcher', email: 'dispatcher@tms-ci.com' },
                 { role: 'DG',         email: 'dg@tms-ci.com'         },
+                { role: 'RH',         email: 'rh@tms-ci.com'         },
+                { role: 'Caissier',   email: 'caissier@tms-ci.com'   },
               ].map(account => (
                 <button
                   key={account.email}

@@ -1,11 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { AuthUser } from '@/lib/auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/v1', '') || 'http://localhost:8000/api';
 
+const ROLE_LABELS: Record<string, string> = {
+  dg: 'DG', manager: 'Manager', dispatcher: 'Dispatcher', rh: 'RH', caissier: 'Caissier',
+};
+
 export default function LogoutButton() {
-  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
     const raw = localStorage.getItem('tms_user');
@@ -31,8 +36,9 @@ export default function LogoutButton() {
     localStorage.removeItem('tms_token');
     localStorage.removeItem('tms_user');
 
-    // Supprime le cookie middleware
+    // Supprime les cookies lus par le proxy et le layout serveur
     document.cookie = 'tms_token=; path=/; max-age=0';
+    document.cookie = 'tms_role=; path=/; max-age=0';
 
     window.location.href = '/login';
   };
@@ -53,7 +59,7 @@ export default function LogoutButton() {
             {user?.name ?? 'Manager'}
           </p>
           <p className="text-[9px] text-slate-600 font-[family-name:var(--font-mono)] truncate">
-            {user?.email ?? ''}
+            {user?.role ? ROLE_LABELS[user.role] : ''}
           </p>
         </div>
         <button

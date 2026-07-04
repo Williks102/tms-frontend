@@ -6,6 +6,7 @@ import {
   Driver, TripStat, MonthlyScore,
 } from '@/hooks/useDrivers';
 import { FormChangeDriverStatus, FormCreateDriver, FormUploadDriverDocument } from '@/components/drivers/DriverForms';
+import { usePermissions } from '@/lib/permissions';
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
@@ -358,6 +359,9 @@ function RankingPanel() {
 }
 
 export default function DriversPage() {
+  const { can } = usePermissions();
+  const canWrite     = can('driversWrite');
+  const canDocuments = can('driversDocuments');
   const [selectedId, setSelectedId]     = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery]   = useState('');
@@ -407,7 +411,9 @@ export default function DriversPage() {
 
       <div className="border-b border-slate-800/60 bg-[#080D1A] p-4">
         <div className="mb-3 flex gap-2">
-          {['create','document','status'].map((action) => (
+          {(['create','document','status'] as const)
+            .filter(action => action === 'document' ? canDocuments : canWrite)
+            .map((action) => (
             <button key={action} onClick={() => setActionView(action as any)} className={`rounded-lg px-3 py-2 text-xs font-semibold ${actionView === action ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
               {action === 'create' ? 'Créer chauffeur' : action === 'document' ? 'Ajouter document' : 'Changer statut'}
             </button>

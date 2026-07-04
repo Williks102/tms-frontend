@@ -60,20 +60,34 @@ export function FormApproveFuelVoucher({ voucherId, onSuccess }: { voucherId: nu
   const [approved_liters, setApprovedLiters] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setError(null);
     setMessage(null);
+
+    // Validation client
+    if (!approved_liters || isNaN(Number(approved_liters))) {
+      setError('Litres approuvés requis (nombre)');
+      return;
+    }
+    if (Number(approved_liters) < 1 || Number(approved_liters) > 300) {
+      setError('Litres approuvés doit être entre 1 et 300');
+      return;
+    }
+
+    setLoading(true);
     try {
       await apiFetch(`/fuel/vouchers/${voucherId}/approve`, {
         method: 'PATCH',
         body: JSON.stringify({ approved_liters: Number(approved_liters) }),
       } as RequestInit);
       setMessage('Bon approuvé');
+      setApprovedLiters('');
       onSuccess?.();
     } catch (err: any) {
-      setMessage(err.message || 'Erreur');
+      setError(err.message || 'Erreur lors de l\'approbation');
     } finally {
       setLoading(false);
     }
@@ -82,7 +96,17 @@ export function FormApproveFuelVoucher({ voucherId, onSuccess }: { voucherId: nu
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       {message && <p className="text-xs text-emerald-400">{message}</p>}
-      <input className="input" placeholder="Litres approuvés" value={approved_liters} onChange={(e) => setApprovedLiters(e.target.value)} />
+      {error && <p className="text-xs text-red-400">{error}</p>}
+      <input
+        className="input"
+        placeholder="Litres approuvés"
+        type="number"
+        step="0.01"
+        min="1"
+        max="300"
+        value={approved_liters}
+        onChange={(e) => setApprovedLiters(e.target.value)}
+      />
       <button type="submit" disabled={loading} className="w-full rounded-lg bg-orange-600 px-3 py-2 text-sm font-semibold text-white">
         {loading ? 'Approbation...' : 'Approuver'}
       </button>
@@ -94,20 +118,30 @@ export function FormRejectFuelVoucher({ voucherId, onSuccess }: { voucherId: num
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setError(null);
     setMessage(null);
+
+    // Validation client
+    if (!reason || reason.trim().length < 10) {
+      setError('Motif requis (minimum 10 caractères)');
+      return;
+    }
+
+    setLoading(true);
     try {
       await apiFetch(`/fuel/vouchers/${voucherId}/reject`, {
         method: 'PATCH',
         body: JSON.stringify({ rejection_reason: reason }),
       } as RequestInit);
       setMessage('Bon refusé');
+      setReason('');
       onSuccess?.();
     } catch (err: any) {
-      setMessage(err.message || 'Erreur');
+      setError(err.message || 'Erreur lors du refus');
     } finally {
       setLoading(false);
     }
@@ -116,7 +150,14 @@ export function FormRejectFuelVoucher({ voucherId, onSuccess }: { voucherId: num
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       {message && <p className="text-xs text-emerald-400">{message}</p>}
-      <textarea className="input min-h-[90px]" placeholder="Motif du refus" value={reason} onChange={(e) => setReason(e.target.value)} />
+      {error && <p className="text-xs text-red-400">{error}</p>}
+      <textarea
+        className="input min-h-[90px]"
+        placeholder="Motif du refus (minimum 10 caractères)"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        minLength={10}
+      />
       <button type="submit" disabled={loading} className="w-full rounded-lg bg-orange-600 px-3 py-2 text-sm font-semibold text-white">
         {loading ? 'Refus...' : 'Refuser'}
       </button>
