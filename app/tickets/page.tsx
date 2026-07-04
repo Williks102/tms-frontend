@@ -5,6 +5,7 @@ import {
   useTickets, useTicketStats, useTicketManifest, Ticket,
 } from '@/hooks/useTickets';
 import { FormSellPhysicalTicket, FormOnlineTicketDemo, FormUpdateTicketStatus } from '@/components/tickets/TicketForms';
+import { PrintTicketButton } from '@/components/tickets/PrintTicketButton';
 import { usePermissions } from '@/lib/permissions';
 import { apiFetch } from '@/lib/api';
 
@@ -289,9 +290,12 @@ export default function TicketsPage() {
             {selected ? (
               <div className="max-w-xl space-y-4">
                 <div className="bg-[#080D1A] border border-slate-800/60 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-3 gap-2">
                     <p className="text-base font-bold text-white font-[family-name:var(--font-syne)]">{selected.passenger_name}</p>
-                    <StatusBadge status={selected.status} />
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <StatusBadge status={selected.status} />
+                      <PrintTicketButton ticket={selected} label="🖨" className="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-xs font-semibold text-slate-300" />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     {[

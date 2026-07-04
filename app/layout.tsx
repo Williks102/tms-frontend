@@ -92,7 +92,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr" className={`${syne.variable} ${jetbrains.variable}`}>
       <body className="bg-[#060A14] text-slate-300 antialiased">
-        <div className="flex min-h-screen">
+        {/* print:hidden — les billets imprimables sont portés (portal) directement sous <body>,
+            en dehors de ce wrapper, pour rester visibles à l'impression. */}
+        <div className="flex min-h-screen print:hidden">
           <Sidebar />
           <main className="flex-1 min-w-0 overflow-auto">
             {children}

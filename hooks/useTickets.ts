@@ -48,7 +48,9 @@ export interface TicketManifest {
     status: string;
     departure_datetime: string;
     boarding_gate: string | null;
-    route: { name: string; code: string };
+    seats_available: number;
+    route:   { name: string; code: string; base_fare: number };
+    vehicle: { capacity: number } | null;
   };
   data: Ticket[];
   summary: {
