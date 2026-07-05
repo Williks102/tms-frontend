@@ -1,9 +1,13 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useRoutes, useDepartures, Route, Departure } from '@/hooks/usePlanning';
-import { formatFCFA } from '@/lib/api';
-import { FormCreateRoute, FormAddRouteStop, FormCreateDeparture, FormUpdateDepartureStatus } from '@/components/planning/PlanningForms';
+import { useRoutes, useDepartures, useGates, useStations, Route, Departure, BoardingGate, RouteStop, Station } from '@/hooks/usePlanning';
+import { apiFetch, formatFCFA } from '@/lib/api';
+import {
+  FormCreateRoute, FormAddRouteStop, FormEditRouteStop,
+  FormCreateGate, FormEditGate, FormCreateStation, FormEditStation,
+  FormCreateDeparture, FormUpdateDepartureStatus,
+} from '@/components/planning/PlanningForms';
 import { usePermissions } from '@/lib/permissions';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -273,14 +277,21 @@ export default function PlanningPage() {
   const [dateFilter, setDateFilter]       = useState(new Date().toISOString().split('T')[0]);
   const [statusFilter, setStatusFilter]   = useState('');
   const [searchQuery, setSearchQuery]     = useState('');
-  const [activeTab, setActiveTab]         = useState<'departures' | 'routes'>('departures');
+  const [activeTab, setActiveTab]         = useState<'departures' | 'routes' | 'gates'>('departures');
   const [showCreateRoute, setShowCreateRoute] = useState(false);
   const [showCreateDeparture, setShowCreateDeparture] = useState(false);
   const [showUpdateStatus, setShowUpdateStatus] = useState(false);
   const [selectedRouteForStop, setSelectedRouteForStop] = useState<number | null>(null);
   const [showStopForm, setShowStopForm] = useState(false);
+  const [editingStop, setEditingStop] = useState<{ routeId: number; stop: RouteStop } | null>(null);
+  const [showCreateGate, setShowCreateGate] = useState(false);
+  const [editingGate, setEditingGate] = useState<BoardingGate | null>(null);
+  const [showCreateStation, setShowCreateStation] = useState(false);
+  const [editingStation, setEditingStation] = useState<Station | null>(null);
 
-  const { data: routesData, isLoading: routesLoading } = useRoutes();
+  const { data: routesData, isLoading: routesLoading, mutate: mutateRoutes } = useRoutes({ with_stops: '1' });
+  const { data: gatesData, isLoading: gatesLoading, mutate: mutateGates } = useGates();
+  const { data: stationsData, isLoading: stationsLoading, mutate: mutateStations } = useStations();
 
   const departureParams: Record<string, string> = {};
   if (dateFilter)     departureParams.date      = dateFilter;
@@ -290,7 +301,47 @@ export default function PlanningPage() {
   const { data: departuresData, isLoading: depsLoading } = useDepartures(departureParams);
 
   const routes    = routesData?.data ?? [];
+  const gates     = gatesData?.data ?? [];
+  const stations  = stationsData?.data ?? [];
   const departures = departuresData?.data ?? [];
+
+  const gatesByStationId = useMemo(() => {
+    const groups: Record<number, BoardingGate[]> = {};
+    for (const g of gates) {
+      (groups[g.station_id] ??= []).push(g);
+    }
+    return groups;
+  }, [gates]);
+
+  const handleDeleteStop = async (routeId: number, stop: RouteStop) => {
+    if (!window.confirm(`Supprimer l'arrêt "${stop.city_name}" ?`)) return;
+    try {
+      await apiFetch(`/planning/routes/${routeId}/stops/${stop.id}`, { method: 'DELETE' } as RequestInit);
+      mutateRoutes();
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la suppression');
+    }
+  };
+
+  const handleDeleteGate = async (gate: BoardingGate) => {
+    if (!window.confirm(`Supprimer le quai ${gate.gate_code} (${gate.station?.name ?? ''}) ?`)) return;
+    try {
+      await apiFetch(`/planning/gates/${gate.id}`, { method: 'DELETE' } as RequestInit);
+      mutateGates();
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la suppression');
+    }
+  };
+
+  const handleDeleteStation = async (station: Station) => {
+    if (!window.confirm(`Supprimer la gare "${station.name}" ?`)) return;
+    try {
+      await apiFetch(`/planning/stations/${station.id}`, { method: 'DELETE' } as RequestInit);
+      mutateStations();
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la suppression');
+    }
+  };
 
   // Filtrage par recherche côté client
   const filteredDepartures = useMemo(() => {
@@ -383,6 +434,7 @@ export default function PlanningPage() {
             {[
               { id: 'departures', label: '🚌 Départs' },
               { id: 'routes',     label: '🗺 Lignes' },
+              { id: 'gates',      label: '🚪 Quais' },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -531,6 +583,11 @@ export default function PlanningPage() {
                           <p className="text-[10px] text-slate-400 font-bold font-[family-name:var(--font-syne)]">
                             {route.origin_city}
                           </p>
+                          {route.origin_station ? (
+                            <p className="text-[9px] text-blue-400/70 mt-0.5">{route.origin_station.name}</p>
+                          ) : (
+                            <p className="text-[9px] text-amber-500/70 mt-0.5">Aucune gare</p>
+                          )}
                         </div>
                         <div className="flex-1 flex items-center">
                           <div className="flex-1 h-px bg-slate-700 relative">
@@ -570,9 +627,108 @@ export default function PlanningPage() {
                           <p className="text-[10px] text-slate-600 mt-0.5">Départs/jour</p>
                         </div>
                       </div>
-                      {canWrite && (
-                        <div className="mt-4 flex gap-2">
+                      {/* Arrêts intermédiaires (lignes dynamiques uniquement) */}
+                      {route.is_dynamic && (
+                        <div className="mt-4 pt-4 border-t border-slate-800/60">
+                          <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-2 font-[family-name:var(--font-syne)]">
+                            Arrêts intermédiaires
+                          </p>
+                          {(route.stops ?? []).length === 0 ? (
+                            <p className="text-[11px] text-slate-600">Aucun arrêt défini</p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {[...(route.stops ?? [])].sort((a, b) => a.stop_order - b.stop_order).map(stop => (
+                                <div key={stop.id} className="flex items-center justify-between gap-2 bg-slate-900/40 rounded-lg px-2.5 py-1.5">
+                                  <div className="min-w-0">
+                                    <span className="text-[11px] font-bold text-slate-300">{stop.stop_order}. {stop.city_name}</span>
+                                    <span className="text-[10px] text-slate-600 ml-2 font-[family-name:var(--font-mono)]">
+                                      {stop.distance_from_origin_km} km · {new Intl.NumberFormat('fr-FR').format(stop.fare_from_origin)} F
+                                    </span>
+                                  </div>
+                                  {canWrite && (
+                                    <div className="flex gap-1 flex-shrink-0">
+                                      <button onClick={() => setEditingStop({ routeId: route.id, stop })} className="text-[10px] text-slate-500 hover:text-blue-400 px-1.5">✎</button>
+                                      <button onClick={() => handleDeleteStop(route.id, stop)} className="text-[10px] text-slate-500 hover:text-red-400 px-1.5">✕</button>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {canWrite && route.is_dynamic && (
+                        <div className="mt-3 flex gap-2">
                           <button onClick={() => { setSelectedRouteForStop(route.id); setShowStopForm(true); }} className="rounded-lg border border-purple-500/30 bg-purple-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-purple-400">+ Arrêt</button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Tab Quais ── */}
+          {activeTab === 'gates' && (
+            <div className="flex-1 overflow-y-auto p-6">
+              {canWrite && (
+                <div className="mb-4 flex justify-end gap-2">
+                  <button onClick={() => setShowCreateStation(true)} className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-400">+ Gare</button>
+                  <button onClick={() => setShowCreateGate(true)} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white">+ Quai</button>
+                </div>
+              )}
+              {stationsLoading || gatesLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+                </div>
+              ) : stations.length === 0 ? (
+                <div className="text-center py-20">
+                  <p className="text-4xl mb-3">🚉</p>
+                  <p className="text-slate-500 text-sm font-[family-name:var(--font-syne)]">Aucune gare définie</p>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {stations.map(station => (
+                    <div key={station.id} className="bg-[#080D1A] border border-slate-800/60 rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <p className="text-xs font-bold text-white font-[family-name:var(--font-syne)]">
+                            {station.name}
+                            {!station.is_active && <span className="ml-2 text-[9px] text-slate-500 uppercase tracking-wider">Inactive</span>}
+                          </p>
+                          <p className="text-[10px] text-slate-600 mt-0.5">{station.city}</p>
+                        </div>
+                        {canWrite && (
+                          <div className="flex gap-2">
+                            <button onClick={() => setEditingStation(station)} className="text-[10px] text-slate-500 hover:text-blue-400 px-1">✎</button>
+                            <button onClick={() => handleDeleteStation(station)} className="text-[10px] text-slate-500 hover:text-red-400 px-1">✕</button>
+                          </div>
+                        )}
+                      </div>
+                      {(gatesByStationId[station.id] ?? []).length === 0 ? (
+                        <p className="text-[11px] text-slate-600">Aucun quai défini</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {(gatesByStationId[station.id] ?? []).map(gate => (
+                            <div
+                              key={gate.id}
+                              className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${gate.is_active ? 'border-blue-500/30 bg-blue-500/10' : 'border-slate-700 bg-slate-800/40'}`}
+                            >
+                              <span className={`text-xs font-bold font-[family-name:var(--font-mono)] ${gate.is_active ? 'text-blue-400' : 'text-slate-500'}`}>
+                                {gate.gate_code}
+                              </span>
+                              {!gate.is_active && (
+                                <span className="text-[9px] text-slate-500 uppercase tracking-wider">Inactif</span>
+                              )}
+                              {canWrite && (
+                                <div className="flex gap-1 ml-1">
+                                  <button onClick={() => setEditingGate(gate)} className="text-[10px] text-slate-500 hover:text-blue-400 px-1">✎</button>
+                                  <button onClick={() => handleDeleteGate(gate)} className="text-[10px] text-slate-500 hover:text-red-400 px-1">✕</button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -639,7 +795,86 @@ export default function PlanningPage() {
               </div>
               <button onClick={() => { setShowStopForm(false); setSelectedRouteForStop(null); }} className="text-sm text-slate-400">✕</button>
             </div>
-            <FormAddRouteStop routeId={selectedRouteForStop} onSuccess={() => { setShowStopForm(false); setSelectedRouteForStop(null); }} />
+            <FormAddRouteStop routeId={selectedRouteForStop} onSuccess={() => { setShowStopForm(false); setSelectedRouteForStop(null); mutateRoutes(); }} />
+          </div>
+        </div>
+      )}
+
+      {editingStop && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-800 bg-[#080D1A] p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Modifier un arrêt</h3>
+                <p className="text-xs text-slate-500">{editingStop.stop.city_name}</p>
+              </div>
+              <button onClick={() => setEditingStop(null)} className="text-sm text-slate-400">✕</button>
+            </div>
+            <FormEditRouteStop
+              routeId={editingStop.routeId}
+              stop={editingStop.stop}
+              onSuccess={() => { setEditingStop(null); mutateRoutes(); }}
+            />
+          </div>
+        </div>
+      )}
+
+      {showCreateGate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-800 bg-[#080D1A] p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Créer un quai</h3>
+                <p className="text-xs text-slate-500">Ajoutez un quai d'embarquement à une gare</p>
+              </div>
+              <button onClick={() => setShowCreateGate(false)} className="text-sm text-slate-400">✕</button>
+            </div>
+            <FormCreateGate onSuccess={() => { setShowCreateGate(false); mutateGates(); }} />
+          </div>
+        </div>
+      )}
+
+      {editingGate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-800 bg-[#080D1A] p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Modifier un quai</h3>
+                <p className="text-xs text-slate-500">{editingGate.station?.name} · {editingGate.gate_code}</p>
+              </div>
+              <button onClick={() => setEditingGate(null)} className="text-sm text-slate-400">✕</button>
+            </div>
+            <FormEditGate gate={editingGate} onSuccess={() => { setEditingGate(null); mutateGates(); }} />
+          </div>
+        </div>
+      )}
+
+      {showCreateStation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-800 bg-[#080D1A] p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Créer une gare</h3>
+                <p className="text-xs text-slate-500">Ajoutez une nouvelle gare routière</p>
+              </div>
+              <button onClick={() => setShowCreateStation(false)} className="text-sm text-slate-400">✕</button>
+            </div>
+            <FormCreateStation onSuccess={() => { setShowCreateStation(false); mutateStations(); }} />
+          </div>
+        </div>
+      )}
+
+      {editingStation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-800 bg-[#080D1A] p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Modifier une gare</h3>
+                <p className="text-xs text-slate-500">{editingStation.name}</p>
+              </div>
+              <button onClick={() => setEditingStation(null)} className="text-sm text-slate-400">✕</button>
+            </div>
+            <FormEditStation station={editingStation} onSuccess={() => { setEditingStation(null); mutateStations(); }} />
           </div>
         </div>
       )}

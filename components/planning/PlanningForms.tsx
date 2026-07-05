@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Field } from '@/components/ui/Field';
+import { useRoutes, useAvailableVehicles, useStations, BoardingGate, RouteStop, Station } from '@/hooks/usePlanning';
+import { useAvailableDrivers } from '@/hooks/useDrivers';
 
 interface FormProps {
   onSuccess?: () => void;
@@ -13,6 +15,7 @@ export function FormCreateRoute({ onSuccess }: FormProps) {
     code: '',
     name: '',
     origin_city: '',
+    origin_station_id: '',
     destination_city: '',
     distance_km: '',
     estimated_duration_min: '',
@@ -21,6 +24,9 @@ export function FormCreateRoute({ onSuccess }: FormProps) {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const { data: stationsData } = useStations();
+  const stations = stationsData?.data ?? [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +37,7 @@ export function FormCreateRoute({ onSuccess }: FormProps) {
         method: 'POST',
         body: JSON.stringify({
           ...form,
+          origin_station_id: form.origin_station_id ? Number(form.origin_station_id) : null,
           distance_km: Number(form.distance_km),
           estimated_duration_min: Number(form.estimated_duration_min),
           base_fare: Number(form.base_fare),
@@ -58,6 +65,14 @@ export function FormCreateRoute({ onSuccess }: FormProps) {
         </Field>
         <Field label="Ville d'origine">
           <input className="input" placeholder="Abidjan" value={form.origin_city} onChange={(e) => setForm({ ...form, origin_city: e.target.value })} />
+        </Field>
+        <Field label="Gare de départ" description="Optionnel — nécessaire pour l'attribution automatique de quai">
+          <select className="input" value={form.origin_station_id} onChange={(e) => setForm({ ...form, origin_station_id: e.target.value })}>
+            <option value="">Aucune</option>
+            {stations.map((s) => (
+              <option key={s.id} value={s.id}>{s.name} ({s.city})</option>
+            ))}
+          </select>
         </Field>
         <Field label="Ville de destination">
           <input className="input" placeholder="Bouaké" value={form.destination_city} onChange={(e) => setForm({ ...form, destination_city: e.target.value })} />
@@ -142,6 +157,250 @@ export function FormAddRouteStop({ routeId, onSuccess }: { routeId: number; onSu
   );
 }
 
+export function FormEditRouteStop({ routeId, stop, onSuccess }: { routeId: number; stop: RouteStop; onSuccess?: () => void }) {
+  const [form, setForm] = useState({
+    city_name: stop.city_name,
+    stop_order: String(stop.stop_order),
+    distance_from_origin_km: String(stop.distance_from_origin_km),
+    fare_from_origin: String(stop.fare_from_origin),
+  });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    try {
+      await apiFetch(`/planning/routes/${routeId}/stops/${stop.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          ...form,
+          stop_order: Number(form.stop_order),
+          distance_from_origin_km: Number(form.distance_from_origin_km),
+          fare_from_origin: Number(form.fare_from_origin),
+        }),
+      } as RequestInit);
+      setMessage('Arrêt mis à jour');
+      onSuccess?.();
+    } catch (err: any) {
+      setMessage(err.message || 'Erreur');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {message && <p className="text-xs text-emerald-400">{message}</p>}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Ville d'arrêt">
+          <input className="input" value={form.city_name} onChange={(e) => setForm({ ...form, city_name: e.target.value })} />
+        </Field>
+        <Field label="Ordre" description="Position de l'arrêt sur le trajet (1, 2, 3...)">
+          <input type="number" className="input" value={form.stop_order} onChange={(e) => setForm({ ...form, stop_order: e.target.value })} />
+        </Field>
+        <Field label="Distance depuis l'origine (km)">
+          <input type="number" className="input" value={form.distance_from_origin_km} onChange={(e) => setForm({ ...form, distance_from_origin_km: e.target.value })} />
+        </Field>
+        <Field label="Tarif depuis l'origine (FCFA)">
+          <input type="number" className="input" value={form.fare_from_origin} onChange={(e) => setForm({ ...form, fare_from_origin: e.target.value })} />
+        </Field>
+      </div>
+      <button type="submit" disabled={loading} className="w-full rounded-lg bg-purple-600 px-3 py-2 text-sm font-semibold text-white">
+        {loading ? 'Enregistrement...' : 'Enregistrer les modifications'}
+      </button>
+    </form>
+  );
+}
+
+export function FormCreateStation({ onSuccess }: FormProps) {
+  const [form, setForm] = useState({ name: '', city: '' });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    try {
+      await apiFetch('/planning/stations', {
+        method: 'POST',
+        body: JSON.stringify(form),
+      } as RequestInit);
+      setMessage('Gare créée');
+      onSuccess?.();
+    } catch (err: any) {
+      setMessage(err.message || 'Erreur');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {message && <p className="text-xs text-emerald-400">{message}</p>}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Nom de la gare" description="Ex: Gare d'Adjamé">
+          <input className="input" placeholder="Gare d'Adjamé" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        </Field>
+        <Field label="Ville">
+          <input className="input" placeholder="Abidjan" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+        </Field>
+      </div>
+      <button type="submit" disabled={loading} className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">
+        {loading ? 'Création...' : 'Créer la gare'}
+      </button>
+    </form>
+  );
+}
+
+export function FormEditStation({ station, onSuccess }: { station: Station; onSuccess?: () => void }) {
+  const [form, setForm] = useState({ name: station.name, city: station.city, is_active: station.is_active });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    try {
+      await apiFetch(`/planning/stations/${station.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(form),
+      } as RequestInit);
+      setMessage('Gare mise à jour');
+      onSuccess?.();
+    } catch (err: any) {
+      setMessage(err.message || 'Erreur');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {message && <p className="text-xs text-emerald-400">{message}</p>}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Nom de la gare">
+          <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+        </Field>
+        <Field label="Ville">
+          <input className="input" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+        </Field>
+      </div>
+      <label className="flex items-center gap-2 text-xs text-slate-400">
+        <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
+        Gare active
+      </label>
+      <button type="submit" disabled={loading} className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">
+        {loading ? 'Enregistrement...' : 'Enregistrer les modifications'}
+      </button>
+    </form>
+  );
+}
+
+export function FormCreateGate({ onSuccess }: FormProps) {
+  const [form, setForm] = useState({ station_id: '', gate_code: '', is_active: true });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const { data: stationsData } = useStations();
+  const stations = stationsData?.data ?? [];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    try {
+      await apiFetch('/planning/gates', {
+        method: 'POST',
+        body: JSON.stringify({ ...form, station_id: Number(form.station_id) }),
+      } as RequestInit);
+      setMessage('Quai créé');
+      onSuccess?.();
+    } catch (err: any) {
+      setMessage(err.message || 'Erreur');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {message && <p className="text-xs text-emerald-400">{message}</p>}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Gare">
+          <select className="input" value={form.station_id} onChange={(e) => setForm({ ...form, station_id: e.target.value })}>
+            <option value="">Sélectionner une gare</option>
+            {stations.map((s) => (
+              <option key={s.id} value={s.id}>{s.name} ({s.city})</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Code du quai" description="Ex: Q1, Q2...">
+          <input className="input" placeholder="Q1" value={form.gate_code} onChange={(e) => setForm({ ...form, gate_code: e.target.value })} />
+        </Field>
+      </div>
+      <button type="submit" disabled={loading} className="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white">
+        {loading ? 'Création...' : 'Créer le quai'}
+      </button>
+    </form>
+  );
+}
+
+export function FormEditGate({ gate, onSuccess }: { gate: BoardingGate; onSuccess?: () => void }) {
+  const [form, setForm] = useState({ station_id: String(gate.station_id), gate_code: gate.gate_code, is_active: gate.is_active });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const { data: stationsData } = useStations();
+  const stations = stationsData?.data ?? [];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    try {
+      await apiFetch(`/planning/gates/${gate.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...form, station_id: Number(form.station_id) }),
+      } as RequestInit);
+      setMessage('Quai mis à jour');
+      onSuccess?.();
+    } catch (err: any) {
+      setMessage(err.message || 'Erreur');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {message && <p className="text-xs text-emerald-400">{message}</p>}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Gare">
+          <select className="input" value={form.station_id} onChange={(e) => setForm({ ...form, station_id: e.target.value })}>
+            {stations.map((s) => (
+              <option key={s.id} value={s.id}>{s.name} ({s.city})</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Code du quai">
+          <input className="input" value={form.gate_code} onChange={(e) => setForm({ ...form, gate_code: e.target.value })} />
+        </Field>
+      </div>
+      <label className="flex items-center gap-2 text-xs text-slate-400">
+        <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
+        Quai actif (utilisable pour l'attribution automatique)
+      </label>
+      <button type="submit" disabled={loading} className="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white">
+        {loading ? 'Enregistrement...' : 'Enregistrer les modifications'}
+      </button>
+    </form>
+  );
+}
+
 export function FormCreateDeparture({ onSuccess }: FormProps) {
   const [form, setForm] = useState({
     route_id: '',
@@ -154,6 +413,14 @@ export function FormCreateDeparture({ onSuccess }: FormProps) {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const { data: routesData } = useRoutes();
+  const { data: vehiclesData } = useAvailableVehicles(form.departure_datetime, form.estimated_arrival);
+  const { data: driversData } = useAvailableDrivers(form.departure_datetime);
+
+  const routes   = routesData?.data ?? [];
+  const vehicles = vehiclesData?.data ?? [];
+  const drivers  = driversData?.data ?? [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,23 +450,54 @@ export function FormCreateDeparture({ onSuccess }: FormProps) {
     <form onSubmit={handleSubmit} className="space-y-3">
       {message && <p className="text-xs text-emerald-400">{message}</p>}
       <div className="grid grid-cols-2 gap-3">
-        <Field label="ID de la ligne">
-          <input type="number" className="input" placeholder="1" value={form.route_id} onChange={(e) => setForm({ ...form, route_id: e.target.value })} />
-        </Field>
-        <Field label="ID véhicule" description="Optionnel — affectable plus tard">
-          <input type="number" className="input" placeholder="Ex: 3" value={form.vehicle_id} onChange={(e) => setForm({ ...form, vehicle_id: e.target.value })} />
-        </Field>
-        <Field label="ID chauffeur" description="Optionnel — affectable plus tard">
-          <input type="number" className="input" placeholder="Ex: 5" value={form.driver_id} onChange={(e) => setForm({ ...form, driver_id: e.target.value })} />
+        <Field label="Ligne">
+          <select className="input" value={form.route_id} onChange={(e) => setForm({ ...form, route_id: e.target.value })}>
+            <option value="">Sélectionner une ligne</option>
+            {routes.map((r) => (
+              <option key={r.id} value={r.id}>{r.code} — {r.name}</option>
+            ))}
+          </select>
         </Field>
         <Field label="Places disponibles" description="Laissez vide pour utiliser la capacité du véhicule">
           <input type="number" className="input" placeholder="Ex: 50" value={form.seats_available} onChange={(e) => setForm({ ...form, seats_available: e.target.value })} />
         </Field>
         <Field label="Date et heure de départ">
-          <input type="datetime-local" className="input" value={form.departure_datetime} onChange={(e) => setForm({ ...form, departure_datetime: e.target.value })} />
+          <input type="datetime-local" className="input" value={form.departure_datetime} onChange={(e) => setForm({ ...form, departure_datetime: e.target.value, vehicle_id: '', driver_id: '' })} />
         </Field>
         <Field label="Date et heure d'arrivée estimée">
-          <input type="datetime-local" className="input" value={form.estimated_arrival} onChange={(e) => setForm({ ...form, estimated_arrival: e.target.value })} />
+          <input type="datetime-local" className="input" value={form.estimated_arrival} onChange={(e) => setForm({ ...form, estimated_arrival: e.target.value, vehicle_id: '' })} />
+        </Field>
+        <Field
+          label="Véhicule"
+          description={form.departure_datetime && form.estimated_arrival ? 'Optionnel — affectable plus tard' : 'Renseignez les dates de départ et d\'arrivée pour voir les véhicules disponibles'}
+        >
+          <select
+            className="input"
+            disabled={!form.departure_datetime || !form.estimated_arrival}
+            value={form.vehicle_id}
+            onChange={(e) => setForm({ ...form, vehicle_id: e.target.value })}
+          >
+            <option value="">Non affecté</option>
+            {vehicles.map((v) => (
+              <option key={v.id} value={v.id}>{v.plate_number} — {v.model} ({v.capacity} places)</option>
+            ))}
+          </select>
+        </Field>
+        <Field
+          label="Chauffeur"
+          description={form.departure_datetime ? 'Optionnel — affectable plus tard' : 'Renseignez la date de départ pour voir les chauffeurs disponibles'}
+        >
+          <select
+            className="input"
+            disabled={!form.departure_datetime}
+            value={form.driver_id}
+            onChange={(e) => setForm({ ...form, driver_id: e.target.value })}
+          >
+            <option value="">Non affecté</option>
+            {drivers.map((d) => (
+              <option key={d.id} value={d.id}>{d.first_name} {d.last_name} ({d.employee_number})</option>
+            ))}
+          </select>
         </Field>
       </div>
       <Field label="Notes" description="Optionnel">

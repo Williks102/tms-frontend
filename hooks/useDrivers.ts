@@ -94,6 +94,16 @@ export function useDriverDetail(id: number | null) {
   );
 }
 
+export function useAvailableDrivers(departureDatetime: string) {
+  const query = new URLSearchParams({ departure_datetime: departureDatetime }).toString();
+
+  return useSWR<{ data: Driver[] }>(
+    departureDatetime ? `/drivers/available?${query}` : null,
+    apiFetch,
+    { revalidateOnFocus: false }
+  );
+}
+
 export function useMonthlyRanking(month?: string) {
   const url = `/drivers/scores/monthly${month ? `?month=${month}` : ''}`;
   return useSWR<{ data: (MonthlyScore & { driver: Driver })[]; month: string }>(

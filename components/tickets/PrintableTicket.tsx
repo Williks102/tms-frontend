@@ -35,6 +35,7 @@ export function PrintableTicket({ ticket, qrDataUrl }: { ticket: Ticket; qrDataU
         <div className="flex justify-between"><span>Passager</span><span className="font-bold">{ticket.passenger_name}</span></div>
         {ticket.departure && (
           <>
+            <div className="flex justify-between"><span>Destination</span><span className="font-bold">{ticket.destination_stop?.city_name ?? ticket.departure.route.destination_city}</span></div>
             <div className="flex justify-between"><span>Date</span><span>{formatDate(ticket.departure.departure_datetime)}</span></div>
             <div className="flex justify-between"><span>Heure</span><span className="font-bold">{formatTime(ticket.departure.departure_datetime)}</span></div>
             {ticket.departure.boarding_gate && (

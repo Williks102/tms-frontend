@@ -67,6 +67,7 @@ function TicketRow({ ticket, selected, onClick }: { ticket: Ticket; selected: bo
       <div className="flex items-center justify-between text-[11px]">
         <span className="text-slate-500">
           {ticket.departure?.route.name ?? `Départ #${ticket.departure_id}`}
+          {ticket.destination_stop && <span className="text-amber-500"> → {ticket.destination_stop.city_name}</span>}
           {ticket.seat_number && <span className="text-slate-600"> · Siège {ticket.seat_number}</span>}
         </span>
         <span className="text-purple-400 font-bold font-[family-name:var(--font-mono)]">
@@ -301,6 +302,7 @@ export default function TicketsPage() {
                     {[
                       { label: 'Référence', value: selected.reference },
                       { label: 'Ligne', value: selected.departure?.route.name ?? `#${selected.departure_id}` },
+                      { label: 'Destination', value: selected.destination_stop?.city_name ?? selected.departure?.route.destination_city ?? '—' },
                       { label: 'Canal', value: CHANNEL_CFG[selected.channel].label },
                       { label: 'Prix', value: formatFCFA(selected.price_fcfa) },
                       { label: 'Siège', value: selected.seat_number ?? '—' },

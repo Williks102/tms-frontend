@@ -20,18 +20,21 @@ function formatDateTime(iso: string): string {
 // met à jour automatiquement le prix (tarif de la ligne) et la liste des
 // sièges encore disponibles sur ce départ.
 function TrajetDepartSiegeFields({
-  departureId, seatNumber, onChange,
+  departureId, seatNumber, destinationStopId, onChange,
 }: {
   departureId: string;
   seatNumber:  string;
-  onChange: (fields: { departure_id?: string; seat_number?: string; price_fcfa?: string }) => void;
+  destinationStopId: string;
+  onChange: (fields: { departure_id?: string; seat_number?: string; price_fcfa?: string; destination_stop_id?: string }) => void;
 }) {
   const [routeId, setRouteId] = useState('');
 
-  const { data: routesData }     = useRoutes();
+  const { data: routesData }     = useRoutes({ with_stops: '1' });
   const { data: departuresData } = useDepartures(routeId ? { route_id: routeId, per_page: '50' } : {});
 
   const routes = routesData?.data ?? [];
+  const selectedRoute = routes.find(r => String(r.id) === routeId) ?? null;
+  const stops = selectedRoute?.is_dynamic ? (selectedRoute.stops ?? []) : [];
 
   const openDepartures = useMemo(() => (departuresData?.data ?? [])
     .filter(d => d.status === 'scheduled' || d.status === 'boarding')
@@ -65,7 +68,7 @@ function TrajetDepartSiegeFields({
             value={routeId}
             onChange={(e) => {
               setRouteId(e.target.value);
-              onChange({ departure_id: '', seat_number: '', price_fcfa: '' });
+              onChange({ departure_id: '', seat_number: '', price_fcfa: '', destination_stop_id: '' });
             }}
           >
             <option value="">Choisir un trajet</option>
@@ -86,6 +89,7 @@ function TrajetDepartSiegeFields({
                 departure_id: e.target.value,
                 seat_number:  '',
                 price_fcfa:   dep ? String(dep.route.base_fare) : '',
+                destination_stop_id: '',
               });
             }}
           >
@@ -116,6 +120,28 @@ function TrajetDepartSiegeFields({
         </div>
       )}
 
+      {selectedDeparture && stops.length > 0 && (
+        <Field label="Destination" description="Le passager peut descendre à un arrêt intermédiaire plutôt qu'au terminus">
+          <select
+            className="input"
+            value={destinationStopId}
+            onChange={(e) => {
+              const stopId = e.target.value;
+              const stop = stops.find(s => String(s.id) === stopId);
+              onChange({
+                destination_stop_id: stopId,
+                price_fcfa: stop ? String(stop.fare_from_origin) : String(selectedDeparture.route.base_fare),
+              });
+            }}
+          >
+            <option value="">{selectedDeparture.route.destination_city} — terminus ({new Intl.NumberFormat('fr-FR').format(selectedDeparture.route.base_fare)} F)</option>
+            {[...stops].sort((a, b) => a.stop_order - b.stop_order).map(s => (
+              <option key={s.id} value={s.id}>{s.city_name} ({new Intl.NumberFormat('fr-FR').format(s.fare_from_origin)} F)</option>
+            ))}
+          </select>
+        </Field>
+      )}
+
       <Field label="Siège" description="Optionnel — laissez vide pour ne pas assigner de place">
         <select
           className="input"
@@ -143,6 +169,7 @@ function TrajetDepartSiegeFields({
 export function FormSellPhysicalTicket({ onSuccess }: FormProps) {
   const [form, setForm] = useState({
     departure_id: '',
+    destination_stop_id: '',
     passenger_name: '',
     passenger_phone: '',
     seat_number: '',
@@ -163,6 +190,7 @@ export function FormSellPhysicalTicket({ onSuccess }: FormProps) {
         body: JSON.stringify({
           ...form,
           departure_id: Number(form.departure_id),
+          destination_stop_id: form.destination_stop_id ? Number(form.destination_stop_id) : null,
           passenger_phone: form.passenger_phone || null,
           seat_number: form.seat_number || null,
           price_fcfa: form.price_fcfa ? Number(form.price_fcfa) : null,
@@ -202,6 +230,7 @@ export function FormSellPhysicalTicket({ onSuccess }: FormProps) {
       <TrajetDepartSiegeFields
         departureId={form.departure_id}
         seatNumber={form.seat_number}
+        destinationStopId={form.destination_stop_id}
         onChange={(fields) => setForm({ ...form, ...fields })}
       />
 
@@ -238,6 +267,7 @@ export function FormSellPhysicalTicket({ onSuccess }: FormProps) {
 export function FormOnlineTicketDemo({ onSuccess }: FormProps) {
   const [form, setForm] = useState({
     departure_id: '',
+    destination_stop_id: '',
     passenger_name: '',
     passenger_phone: '',
     seat_number: '',
@@ -259,6 +289,7 @@ export function FormOnlineTicketDemo({ onSuccess }: FormProps) {
         body: JSON.stringify({
           ...form,
           departure_id: Number(form.departure_id),
+          destination_stop_id: form.destination_stop_id ? Number(form.destination_stop_id) : null,
           seat_number: form.seat_number || null,
           price_fcfa: form.price_fcfa ? Number(form.price_fcfa) : null,
         }),
@@ -300,6 +331,7 @@ export function FormOnlineTicketDemo({ onSuccess }: FormProps) {
       <TrajetDepartSiegeFields
         departureId={form.departure_id}
         seatNumber={form.seat_number}
+        destinationStopId={form.destination_stop_id}
         onChange={(fields) => setForm({ ...form, ...fields })}
       />
 

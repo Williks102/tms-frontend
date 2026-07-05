@@ -9,6 +9,7 @@ export interface Route {
   code:                   string;
   name:                   string;
   origin_city:            string;
+  origin_station:         { id: number; name: string; city: string } | null;
   destination_city:       string;
   distance_km:            number;
   estimated_duration_min: number;
@@ -71,9 +72,66 @@ export interface DeparturesResponse {
   per_page:      number;
 }
 
-export function useRoutes() {
+export interface Vehicle {
+  id:            number;
+  plate_number:  string;
+  model:         string;
+  capacity:      number;
+  status:        'available' | 'on_trip' | 'boarding' | 'maintenance' | 'inactive';
+}
+
+export interface Station {
+  id:           number;
+  name:         string;
+  city:         string;
+  is_active:    boolean;
+  gates_count?: number;
+}
+
+export interface BoardingGate {
+  id:         number;
+  station_id: number;
+  station:    { id: number; name: string; city: string } | null;
+  gate_code:  string;
+  is_active:  boolean;
+}
+
+export function useRoutes(params: Record<string, string> = {}) {
+  const query = new URLSearchParams(params).toString();
+  const url   = `/planning/routes${query ? '?' + query : ''}`;
+
   return useSWR<{ data: Route[] }>(
-    '/planning/routes',
+    url,
+    (u: string) => apiFetch(u),
+    { revalidateOnFocus: false }
+  );
+}
+
+export function useGates() {
+  return useSWR<{ data: BoardingGate[] }>(
+    '/planning/gates',
+    (url: string) => apiFetch(url),
+    { revalidateOnFocus: false }
+  );
+}
+
+export function useStations() {
+  return useSWR<{ data: Station[] }>(
+    '/planning/stations',
+    (url: string) => apiFetch(url),
+    { revalidateOnFocus: false }
+  );
+}
+
+export function useAvailableVehicles(departureDatetime: string, estimatedArrival: string) {
+  const ready = Boolean(departureDatetime && estimatedArrival);
+  const query = new URLSearchParams({
+    departure_datetime: departureDatetime,
+    estimated_arrival:  estimatedArrival,
+  }).toString();
+
+  return useSWR<{ data: Vehicle[] }>(
+    ready ? `/planning/vehicles/available?${query}` : null,
     (url: string) => apiFetch(url),
     { revalidateOnFocus: false }
   );

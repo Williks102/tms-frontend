@@ -8,6 +8,7 @@ export interface Ticket {
   id:                   number;
   reference:            string;
   departure_id:         number;
+  destination_stop_id:  number | null;
   passenger_name:       string;
   passenger_phone:      string | null;
   seat_number:          string | null;
@@ -19,12 +20,13 @@ export interface Ticket {
   boarded_at:           string | null;
   cancellation_reason:  string | null;
   soldBy?: { id: number; name: string } | null;
+  destination_stop?: { id: number; city_name: string; fare_from_origin: number } | null;
   departure?: {
     id: number;
     status: string;
     departure_datetime: string;
     boarding_gate: string | null;
-    route: { name: string; code: string };
+    route: { name: string; code: string; destination_city: string };
   };
 }
 
