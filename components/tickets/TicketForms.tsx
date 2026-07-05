@@ -5,6 +5,7 @@ import { apiFetch } from '@/lib/api';
 import { useRoutes, useDepartures } from '@/hooks/usePlanning';
 import { useTicketManifest, Ticket } from '@/hooks/useTickets';
 import { PrintTicketButton } from './PrintTicketButton';
+import { Field } from '@/components/ui/Field';
 
 interface FormProps {
   onSuccess?: () => void;
@@ -58,48 +59,52 @@ function TrajetDepartSiegeFields({
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-3">
-        <select
-          className="input"
-          value={routeId}
-          onChange={(e) => {
-            setRouteId(e.target.value);
-            onChange({ departure_id: '', seat_number: '', price_fcfa: '' });
-          }}
-        >
-          <option value="">Choisir un trajet</option>
-          {routes.map(r => (
-            <option key={r.id} value={r.id}>{r.code} · {r.origin_city} → {r.destination_city}</option>
-          ))}
-        </select>
+        <Field label="Trajet">
+          <select
+            className="input"
+            value={routeId}
+            onChange={(e) => {
+              setRouteId(e.target.value);
+              onChange({ departure_id: '', seat_number: '', price_fcfa: '' });
+            }}
+          >
+            <option value="">Choisir un trajet</option>
+            {routes.map(r => (
+              <option key={r.id} value={r.id}>{r.code} · {r.origin_city} → {r.destination_city}</option>
+            ))}
+          </select>
+        </Field>
 
-        <select
-          className="input"
-          value={departureId}
-          disabled={!routeId}
-          onChange={(e) => {
-            const dep = openDepartures.find(d => String(d.id) === e.target.value);
-            onChange({
-              departure_id: e.target.value,
-              seat_number:  '',
-              price_fcfa:   dep ? String(dep.route.base_fare) : '',
-            });
-          }}
-        >
-          <option value="">
-            {!routeId
-              ? 'Choisissez un trajet d’abord'
-              : !departuresData
-                ? 'Chargement des départs...'
-                : openDepartures.length === 0
-                  ? 'Aucun départ ouvert'
-                  : 'Choisir un départ'}
-          </option>
-          {openDepartures.map(d => (
-            <option key={d.id} value={d.id}>
-              {formatDateTime(d.departure_datetime)} · {d.seats_available} place{d.seats_available > 1 ? 's' : ''} dispo
+        <Field label="Départ" description="Seuls les départs ouverts à la vente s'affichent">
+          <select
+            className="input"
+            value={departureId}
+            disabled={!routeId}
+            onChange={(e) => {
+              const dep = openDepartures.find(d => String(d.id) === e.target.value);
+              onChange({
+                departure_id: e.target.value,
+                seat_number:  '',
+                price_fcfa:   dep ? String(dep.route.base_fare) : '',
+              });
+            }}
+          >
+            <option value="">
+              {!routeId
+                ? 'Choisissez un trajet d’abord'
+                : !departuresData
+                  ? 'Chargement des départs...'
+                  : openDepartures.length === 0
+                    ? 'Aucun départ ouvert'
+                    : 'Choisir un départ'}
             </option>
-          ))}
-        </select>
+            {openDepartures.map(d => (
+              <option key={d.id} value={d.id}>
+                {formatDateTime(d.departure_datetime)} · {d.seats_available} place{d.seats_available > 1 ? 's' : ''} dispo
+              </option>
+            ))}
+          </select>
+        </Field>
       </div>
 
       {selectedDeparture && (
@@ -111,23 +116,25 @@ function TrajetDepartSiegeFields({
         </div>
       )}
 
-      <select
-        className="input"
-        value={seatNumber}
-        disabled={!selectedDeparture}
-        onChange={(e) => onChange({ seat_number: e.target.value })}
-      >
-        <option value="">
-          {!selectedDeparture
-            ? 'Choisissez un départ d’abord'
-            : !selectedDeparture.vehicle
-              ? 'Aucun véhicule affecté — siège non requis'
-              : !manifest
-                ? 'Chargement des sièges...'
-                : 'Siège (optionnel)'}
-        </option>
-        {availableSeats.map(s => <option key={s} value={s}>Siège {s}</option>)}
-      </select>
+      <Field label="Siège" description="Optionnel — laissez vide pour ne pas assigner de place">
+        <select
+          className="input"
+          value={seatNumber}
+          disabled={!selectedDeparture}
+          onChange={(e) => onChange({ seat_number: e.target.value })}
+        >
+          <option value="">
+            {!selectedDeparture
+              ? 'Choisissez un départ d’abord'
+              : !selectedDeparture.vehicle
+                ? 'Aucun véhicule affecté — siège non requis'
+                : !manifest
+                  ? 'Chargement des sièges...'
+                  : 'Siège (optionnel)'}
+          </option>
+          {availableSeats.map(s => <option key={s} value={s}>Siège {s}</option>)}
+        </select>
+      </Field>
     </div>
   );
 }
@@ -198,15 +205,23 @@ export function FormSellPhysicalTicket({ onSuccess }: FormProps) {
         onChange={(fields) => setForm({ ...form, ...fields })}
       />
 
-      <input className="input" placeholder="Nom du passager" value={form.passenger_name} onChange={(e) => setForm({ ...form, passenger_name: e.target.value })} />
-      <input className="input" placeholder="Téléphone (optionnel)" value={form.passenger_phone} onChange={(e) => setForm({ ...form, passenger_phone: e.target.value })} />
+      <Field label="Nom du passager">
+        <input className="input" placeholder="Koffi N'Guessan" value={form.passenger_name} onChange={(e) => setForm({ ...form, passenger_name: e.target.value })} />
+      </Field>
+      <Field label="Téléphone" description="Optionnel">
+        <input className="input" placeholder="+225 07 00 00 00 00" value={form.passenger_phone} onChange={(e) => setForm({ ...form, passenger_phone: e.target.value })} />
+      </Field>
       <div className="grid grid-cols-2 gap-3">
-        <select className="input" value={form.payment_method} onChange={(e) => setForm({ ...form, payment_method: e.target.value })}>
-          <option value="cash">Espèces</option>
-          <option value="mobile_money">Mobile Money</option>
-          <option value="card">Carte</option>
-        </select>
-        <input type="number" className="input" placeholder="Prix FCFA" value={form.price_fcfa} onChange={(e) => setForm({ ...form, price_fcfa: e.target.value })} />
+        <Field label="Moyen de paiement">
+          <select className="input" value={form.payment_method} onChange={(e) => setForm({ ...form, payment_method: e.target.value })}>
+            <option value="cash">Espèces</option>
+            <option value="mobile_money">Mobile Money</option>
+            <option value="card">Carte</option>
+          </select>
+        </Field>
+        <Field label="Prix (FCFA)" description="Auto-rempli, modifiable">
+          <input type="number" className="input" placeholder="4500" value={form.price_fcfa} onChange={(e) => setForm({ ...form, price_fcfa: e.target.value })} />
+        </Field>
       </div>
       <button
         type="submit"
@@ -288,15 +303,23 @@ export function FormOnlineTicketDemo({ onSuccess }: FormProps) {
         onChange={(fields) => setForm({ ...form, ...fields })}
       />
 
-      <input className="input" placeholder="Nom du passager" value={form.passenger_name} onChange={(e) => setForm({ ...form, passenger_name: e.target.value })} />
-      <input className="input" placeholder="Téléphone" value={form.passenger_phone} onChange={(e) => setForm({ ...form, passenger_phone: e.target.value })} />
+      <Field label="Nom du passager">
+        <input className="input" placeholder="Koffi N'Guessan" value={form.passenger_name} onChange={(e) => setForm({ ...form, passenger_name: e.target.value })} />
+      </Field>
+      <Field label="Téléphone" description="Requis pour la confirmation en ligne">
+        <input className="input" placeholder="+225 07 00 00 00 00" value={form.passenger_phone} onChange={(e) => setForm({ ...form, passenger_phone: e.target.value })} />
+      </Field>
       <div className="grid grid-cols-2 gap-3">
-        <select className="input" value={form.payment_method} onChange={(e) => setForm({ ...form, payment_method: e.target.value })}>
-          <option value="mobile_money">Mobile Money</option>
-          <option value="card">Carte</option>
-          <option value="online">Paiement en ligne</option>
-        </select>
-        <input type="number" className="input" placeholder="Prix FCFA" value={form.price_fcfa} onChange={(e) => setForm({ ...form, price_fcfa: e.target.value })} />
+        <Field label="Moyen de paiement">
+          <select className="input" value={form.payment_method} onChange={(e) => setForm({ ...form, payment_method: e.target.value })}>
+            <option value="mobile_money">Mobile Money</option>
+            <option value="card">Carte</option>
+            <option value="online">Paiement en ligne</option>
+          </select>
+        </Field>
+        <Field label="Prix (FCFA)" description="Auto-rempli, modifiable">
+          <input type="number" className="input" placeholder="4500" value={form.price_fcfa} onChange={(e) => setForm({ ...form, price_fcfa: e.target.value })} />
+        </Field>
       </div>
       <button
         type="submit"
@@ -356,11 +379,15 @@ export function FormUpdateTicketStatus({ ticketId, currentStatus, onSuccess }: {
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       {message && <p className="text-xs text-emerald-400">{message}</p>}
-      <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
+      <Field label="Action">
+        <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
+          {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      </Field>
       {status !== 'boarded' && (
-        <textarea className="input min-h-[80px]" placeholder="Motif (obligatoire)" value={reason} onChange={(e) => setReason(e.target.value)} />
+        <Field label="Motif" description="Obligatoire pour annuler ou rembourser">
+          <textarea className="input min-h-[80px]" placeholder="Raison de l'annulation ou du remboursement..." value={reason} onChange={(e) => setReason(e.target.value)} />
+        </Field>
       )}
       <button type="submit" disabled={loading} className="w-full rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white">
         {loading ? 'Mise à jour...' : 'Confirmer'}

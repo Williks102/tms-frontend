@@ -50,3 +50,27 @@ code, pre, .mono {
 .fade-in-4 { animation: fadeInUp 0.4s 0.20s ease both; }
 .fade-in-5 { animation: fadeInUp 0.4s 0.25s ease both; }
 .fade-in-6 { animation: fadeInUp 0.4s 0.30s ease both; }
+
+/* Champs de formulaire (input/select/textarea) — utilisé partout via className="input" */
+@layer components {
+  .input {
+    display: block;
+    width: 100%;
+    background-color: rgba(30, 41, 59, 0.6); /* slate-800/60 */
+    border: 1px solid #334155; /* slate-700 */
+    color: #cbd5e1; /* slate-300 */
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+  .input::placeholder { color: #475569; } /* slate-600 */
+  .input:focus {
+    outline: none;
+    background-color: rgb(15, 23, 42);
+    border-color: rgba(59, 130, 246, 0.5); /* blue-500/50 */
+  }
+  .input:disabled { opacity: 0.5; cursor: not-allowed; }
+  select.input { cursor: pointer; }
+}
