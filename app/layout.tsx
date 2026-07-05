@@ -87,19 +87,18 @@ async function Sidebar() {
 // ── Bouton logout (Client Component) ──────────────────────────────────────
 // Séparé pour pouvoir utiliser 'use client' sans contaminer le layout entier
 import LogoutButton from '@/components/LogoutButton';
+import AppShell from '@/components/AppShell';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr" className={`${syne.variable} ${jetbrains.variable}`}>
       <body className="bg-[#060A14] text-slate-300 antialiased">
-        {/* print:hidden — les billets imprimables sont portés (portal) directement sous <body>,
+        {/* AppShell masque la sidebar sur /login (page publique, pas de rôle à afficher).
+            print:hidden — les billets imprimables sont portés (portal) directement sous <body>,
             en dehors de ce wrapper, pour rester visibles à l'impression. */}
-        <div className="flex min-h-screen print:hidden">
-          <Sidebar />
-          <main className="flex-1 min-w-0 overflow-auto">
-            {children}
-          </main>
-        </div>
+        <AppShell sidebar={<Sidebar />}>
+          {children}
+        </AppShell>
       </body>
     </html>
   );
