@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import {
   useTickets, useTicketStats, useTicketManifest, Ticket,
 } from '@/hooks/useTickets';
+import { useRoutes, useDepartures } from '@/hooks/usePlanning';
 import { FormSellPhysicalTicket, FormOnlineTicketDemo, FormUpdateTicketStatus } from '@/components/tickets/TicketForms';
 import { PrintTicketButton } from '@/components/tickets/PrintTicketButton';
 import { usePermissions } from '@/lib/permissions';
@@ -78,6 +79,68 @@ function TicketRow({ ticket, selected, onClick }: { ticket: Ticket; selected: bo
   );
 }
 
+// ── Sélection en cascade : trajet → départ, pour choisir le manifeste à afficher ──
+function ManifestDeparturePicker({ departureId, onSelect }: { departureId: number | null; onSelect: (id: number | null) => void }) {
+  const [routeId, setRouteId] = useState('');
+
+  const { data: routesData }     = useRoutes();
+  const { data: departuresData } = useDepartures(routeId ? { route_id: routeId, per_page: '50' } : {});
+
+  const routes = routesData?.data ?? [];
+
+  const departures = useMemo(() => (departuresData?.data ?? [])
+    .slice()
+    .sort((a, b) => new Date(b.departure_datetime).getTime() - new Date(a.departure_datetime).getTime()),
+    [departuresData]
+  );
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="block text-[10px] text-slate-500 uppercase tracking-wider mb-2 font-[family-name:var(--font-syne)]">
+          Trajet
+        </label>
+        <select
+          value={routeId}
+          onChange={(e) => { setRouteId(e.target.value); onSelect(null); }}
+          className="w-full bg-slate-800/60 border border-slate-700 text-slate-300 text-xs rounded-lg px-3 py-2 font-[family-name:var(--font-syne)] focus:outline-none focus:border-purple-500/50"
+        >
+          <option value="">Choisir un trajet</option>
+          {routes.map(r => (
+            <option key={r.id} value={r.id}>{r.code} · {r.origin_city} → {r.destination_city}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="block text-[10px] text-slate-500 uppercase tracking-wider mb-2 font-[family-name:var(--font-syne)]">
+          Départ
+        </label>
+        <select
+          value={departureId ?? ''}
+          disabled={!routeId}
+          onChange={(e) => onSelect(e.target.value ? Number(e.target.value) : null)}
+          className="w-full bg-slate-800/60 border border-slate-700 text-slate-300 text-xs rounded-lg px-3 py-2 font-[family-name:var(--font-syne)] focus:outline-none focus:border-purple-500/50 disabled:opacity-50"
+        >
+          <option value="">
+            {!routeId
+              ? 'Choisissez un trajet d’abord'
+              : !departuresData
+                ? 'Chargement des départs...'
+                : departures.length === 0
+                  ? 'Aucun départ sur ce trajet'
+                  : 'Choisir un départ'}
+          </option>
+          {departures.map(d => (
+            <option key={d.id} value={d.id}>
+              {formatDateTime(d.departure_datetime)} · {d.status}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
 function ManifestPanel({ departureId, canWrite }: { departureId: number | null; canWrite: boolean }) {
   const { data, isLoading, mutate } = useTicketManifest(departureId);
   const [boardingId, setBoardingId] = useState<number | null>(null);
@@ -86,7 +149,7 @@ function ManifestPanel({ departureId, canWrite }: { departureId: number | null; 
     return (
       <div className="flex flex-col items-center justify-center h-full text-center p-8">
         <p className="text-4xl mb-3">🎫</p>
-        <p className="text-slate-500 text-sm font-[family-name:var(--font-syne)]">Saisir un ID de départ</p>
+        <p className="text-slate-500 text-sm font-[family-name:var(--font-syne)]">Choisir un trajet et un départ</p>
         <p className="text-slate-700 text-xs mt-1">pour afficher la liste d'embarquement</p>
       </div>
     );
@@ -174,7 +237,6 @@ export default function TicketsPage() {
   const [searchQuery, setSearchQuery]     = useState('');
   const [selected, setSelected]           = useState<Ticket | null>(null);
   const [actionView, setActionView]       = useState<'physical' | 'online' | null>(null);
-  const [manifestInput, setManifestInput] = useState('');
   const [manifestId, setManifestId]       = useState<number | null>(null);
 
   const params: Record<string, string> = {};
@@ -345,27 +407,7 @@ export default function TicketsPage() {
       {activeTab === 'manifest' && (
         <div className="flex h-[calc(100vh-7rem)]">
           <div className="w-72 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A] p-4">
-            <label className="block text-[10px] text-slate-500 uppercase tracking-wider mb-2 font-[family-name:var(--font-syne)]">
-              ID du départ
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                value={manifestInput}
-                onChange={e => setManifestInput(e.target.value)}
-                placeholder="ex: 27"
-                className="flex-1 bg-slate-800/60 border border-slate-700 text-slate-300 text-xs rounded-lg px-3 py-2 placeholder-slate-600 font-[family-name:var(--font-mono)] focus:outline-none focus:border-purple-500/50"
-              />
-              <button
-                onClick={() => setManifestId(manifestInput ? Number(manifestInput) : null)}
-                className="rounded-lg bg-purple-600 px-3 py-2 text-xs font-semibold text-white"
-              >
-                Voir
-              </button>
-            </div>
-            <p className="text-[10px] text-slate-600 mt-2">
-              Trouvez l'ID depuis la page Planning (départs du jour).
-            </p>
+            <ManifestDeparturePicker departureId={manifestId} onSelect={setManifestId} />
           </div>
           <div className="flex-1 overflow-y-auto bg-[#060A14]">
             <ManifestPanel departureId={manifestId} canWrite={canWrite} />
