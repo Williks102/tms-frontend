@@ -185,7 +185,12 @@ function DepartureRow({ dep }: { dep: Departure }) {
         )}
 
         {/* Statut */}
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 flex items-center gap-2">
+          {dep.boarding_due && (
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
+              ⏰ Embarquement à ouvrir
+            </span>
+          )}
           <StatusBadge status={dep.status} />
         </div>
 
@@ -199,6 +204,12 @@ function DepartureRow({ dep }: { dep: Departure }) {
       {expanded && (
         <div className="px-4 pb-4 pt-1 border-t border-slate-800/60 bg-slate-900/20">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs mt-3">
+            <div>
+              <p className="text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Embarquement prévu</p>
+              <p className={`font-[family-name:var(--font-mono)] ${dep.boarding_due ? 'text-amber-400 font-bold' : 'text-slate-300'}`}>
+                {formatTime(dep.boarding_time)}
+              </p>
+            </div>
             <div>
               <p className="text-slate-600 mb-1 uppercase tracking-wider text-[10px]">Départ prévu</p>
               <p className="text-slate-300 font-[family-name:var(--font-mono)]">

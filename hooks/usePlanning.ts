@@ -56,6 +56,8 @@ export interface Departure {
   estimated_arrival:   string;
   actual_departure:    string | null;
   actual_arrival:      string | null;
+  boarding_time:       string | null;
+  boarding_due:        boolean;
   boarding_gate:       string | null;
   seats_available:     number;
   status:              'scheduled' | 'boarding' | 'departed' | 'arrived' | 'cancelled';

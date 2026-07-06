@@ -158,6 +158,8 @@ function ManifestPanel({ departureId, canWrite }: { departureId: number | null; 
   if (isLoading) return <div className="p-6 space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16" />)}</div>;
   if (!data) return <p className="p-6 text-sm text-slate-500">Départ introuvable</p>;
 
+  const canBoard = data.departure.status === 'boarding' || data.departure.status === 'departed';
+
   return (
     <div className="p-6 space-y-4">
       <div className="bg-[#080D1A] border border-slate-800/60 rounded-xl p-4">
@@ -169,6 +171,11 @@ function ManifestPanel({ departureId, canWrite }: { departureId: number | null; 
           {data.departure.boarding_gate && ` · Quai ${data.departure.boarding_gate}`}
           {' · '}Statut: {data.departure.status}
         </p>
+        {canWrite && !canBoard && (
+          <p className="text-[11px] text-amber-500 mt-2">
+            L'embarquement sera possible une fois ce départ passé en statut "Embarquement" ou "En route".
+          </p>
+        )}
         <div className="grid grid-cols-4 gap-2 mt-3 text-center">
           {[
             { label: 'Total',    value: data.summary.total },
@@ -197,7 +204,7 @@ function ManifestPanel({ departureId, canWrite }: { departureId: number | null; 
               <p className="text-[10px] text-slate-600">{CHANNEL_CFG[ticket.channel].label} · {ticket.reference}</p>
             </div>
             <StatusBadge status={ticket.status} />
-            {canWrite && ticket.status === 'paid' && (
+            {canWrite && ticket.status === 'paid' && canBoard && (
               <button
                 onClick={async () => {
                   setBoardingId(ticket.id);
@@ -207,6 +214,8 @@ function ManifestPanel({ departureId, canWrite }: { departureId: number | null; 
                       body: JSON.stringify({ status: 'boarded' }),
                     } as RequestInit);
                     mutate();
+                  } catch (err: any) {
+                    alert(err.message || 'Erreur lors de l\'embarquement');
                   } finally {
                     setBoardingId(null);
                   }

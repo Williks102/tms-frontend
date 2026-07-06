@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Field } from '@/components/ui/Field';
-import { useRoutes, useAvailableVehicles, useStations, BoardingGate, RouteStop, Station } from '@/hooks/usePlanning';
+import { useRoutes, useAvailableVehicles, useStations, useDepartures, BoardingGate, RouteStop, Station } from '@/hooks/usePlanning';
 import { useAvailableDrivers } from '@/hooks/useDrivers';
 
 interface FormProps {
@@ -510,14 +510,47 @@ export function FormCreateDeparture({ onSuccess }: FormProps) {
   );
 }
 
+// Miroir de DepartureService::VALID_TRANSITIONS (backend) — évite de proposer
+// une transition que l'API refuserait de toute façon.
+const DEPARTURE_STATUS_TRANSITIONS: Record<string, string[]> = {
+  scheduled: ['boarding', 'cancelled'],
+  boarding:  ['departed', 'cancelled'],
+  departed:  ['arrived'],
+  arrived:   [],
+  cancelled: [],
+};
+
+const DEPARTURE_STATUS_LABELS: Record<string, string> = {
+  scheduled: 'Programmé',
+  boarding:  'Embarquement',
+  departed:  'En route',
+  arrived:   'Arrivé',
+  cancelled: 'Annulé',
+};
+
 export function FormUpdateDepartureStatus({ onSuccess }: FormProps) {
+  const [routeId, setRouteId] = useState('');
   const [departureId, setDepartureId] = useState('');
-  const [status, setStatus] = useState('boarding');
+  const [status, setStatus] = useState('');
   const [reason, setReason] = useState('');
   const [actualDeparture, setActualDeparture] = useState('');
   const [actualArrival, setActualArrival] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const { data: routesData }     = useRoutes();
+  const { data: departuresData } = useDepartures(routeId ? { route_id: routeId, per_page: '50' } : {});
+
+  const routes = routesData?.data ?? [];
+
+  const departures = useMemo(() => (departuresData?.data ?? [])
+    .slice()
+    .sort((a, b) => new Date(b.departure_datetime).getTime() - new Date(a.departure_datetime).getTime()),
+    [departuresData]
+  );
+
+  const selectedDeparture = departures.find(d => String(d.id) === departureId) ?? null;
+  const allowedStatuses = selectedDeparture ? DEPARTURE_STATUS_TRANSITIONS[selectedDeparture.status] ?? [] : [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -545,33 +578,87 @@ export function FormUpdateDepartureStatus({ onSuccess }: FormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       {message && <p className="text-xs text-emerald-400">{message}</p>}
-      <Field label="ID du départ">
-        <input type="number" className="input" placeholder="Ex: 27" value={departureId} onChange={(e) => setDepartureId(e.target.value)} />
-      </Field>
-      <Field label="Nouveau statut">
-        <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="boarding">Embarquement</option>
-          <option value="departed">En route</option>
-          <option value="arrived">Arrivé</option>
-          <option value="cancelled">Annulé</option>
-        </select>
-      </Field>
-      {status === 'cancelled' && (
-        <Field label="Motif d'annulation" description="Obligatoire, minimum 10 caractères">
-          <textarea className="input min-h-[80px]" placeholder="Raison de l'annulation..." value={reason} onChange={(e) => setReason(e.target.value)} />
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Trajet">
+          <select
+            className="input"
+            value={routeId}
+            onChange={(e) => { setRouteId(e.target.value); setDepartureId(''); setStatus(''); }}
+          >
+            <option value="">Choisir un trajet</option>
+            {routes.map(r => (
+              <option key={r.id} value={r.id}>{r.code} · {r.origin_city} → {r.destination_city}</option>
+            ))}
+          </select>
         </Field>
-      )}
-      {status === 'departed' && (
-        <Field label="Heure de départ réelle">
-          <input type="datetime-local" className="input" value={actualDeparture} onChange={(e) => setActualDeparture(e.target.value)} />
+        <Field label="Départ">
+          <select
+            className="input"
+            value={departureId}
+            disabled={!routeId}
+            onChange={(e) => {
+              const dep = departures.find(d => String(d.id) === e.target.value);
+              setDepartureId(e.target.value);
+              const allowed = dep ? DEPARTURE_STATUS_TRANSITIONS[dep.status] ?? [] : [];
+              setStatus(allowed[0] ?? '');
+            }}
+          >
+            <option value="">
+              {!routeId
+                ? 'Choisissez un trajet d’abord'
+                : !departuresData
+                  ? 'Chargement des départs...'
+                  : departures.length === 0
+                    ? 'Aucun départ sur ce trajet'
+                    : 'Choisir un départ'}
+            </option>
+            {departures.map(d => (
+              <option key={d.id} value={d.id}>
+                {new Date(d.departure_datetime).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · {DEPARTURE_STATUS_LABELS[d.status]}
+              </option>
+            ))}
+          </select>
         </Field>
+      </div>
+
+      {selectedDeparture && allowedStatuses.length === 0 && (
+        <p className="text-xs text-slate-500 bg-slate-900/40 rounded-lg px-3 py-2">
+          Ce départ est {DEPARTURE_STATUS_LABELS[selectedDeparture.status].toLowerCase()} — aucun changement de statut possible.
+        </p>
       )}
-      {status === 'arrived' && (
-        <Field label="Heure d'arrivée réelle">
-          <input type="datetime-local" className="input" value={actualArrival} onChange={(e) => setActualArrival(e.target.value)} />
-        </Field>
+
+      {selectedDeparture && allowedStatuses.length > 0 && (
+        <>
+          <Field label="Nouveau statut">
+            <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
+              {allowedStatuses.map(s => (
+                <option key={s} value={s}>{DEPARTURE_STATUS_LABELS[s]}</option>
+              ))}
+            </select>
+          </Field>
+          {status === 'cancelled' && (
+            <Field label="Motif d'annulation" description="Obligatoire, minimum 10 caractères">
+              <textarea className="input min-h-[80px]" placeholder="Raison de l'annulation..." value={reason} onChange={(e) => setReason(e.target.value)} />
+            </Field>
+          )}
+          {status === 'departed' && (
+            <Field label="Heure de départ réelle">
+              <input type="datetime-local" className="input" value={actualDeparture} onChange={(e) => setActualDeparture(e.target.value)} />
+            </Field>
+          )}
+          {status === 'arrived' && (
+            <Field label="Heure d'arrivée réelle">
+              <input type="datetime-local" className="input" value={actualArrival} onChange={(e) => setActualArrival(e.target.value)} />
+            </Field>
+          )}
+        </>
       )}
-      <button type="submit" disabled={loading} className="w-full rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white">
+
+      <button
+        type="submit"
+        disabled={loading || !selectedDeparture || allowedStatuses.length === 0}
+        className="w-full rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+      >
         {loading ? 'Mise à jour...' : 'Mettre à jour'}
       </button>
     </form>
