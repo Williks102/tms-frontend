@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Field } from '@/components/ui/Field';
-import { useRoutes, useAvailableVehicles, useStations, useDepartures, BoardingGate, RouteStop, Station } from '@/hooks/usePlanning';
+import { useRoutes, useAvailableVehicles, useStations, useDepartures, BoardingGate, RouteStop, Station, Departure } from '@/hooks/usePlanning';
 import { useAvailableDrivers } from '@/hooks/useDrivers';
 
 interface FormProps {
@@ -505,6 +505,102 @@ export function FormCreateDeparture({ onSuccess }: FormProps) {
       </Field>
       <button type="submit" disabled={loading} className="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">
         {loading ? 'Création...' : 'Créer le départ'}
+      </button>
+    </form>
+  );
+}
+
+function toDatetimeLocal(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Modification d'un départ existant — uniquement possible tant qu'il est
+// "Programmé" (voir DepartureService::update côté backend). La ligne n'est
+// volontairement pas modifiable : un trajet erroné doit être annulé et recréé.
+export function FormEditDeparture({ departure, onSuccess }: { departure: Departure; onSuccess?: () => void }) {
+  const [form, setForm] = useState({
+    departure_datetime: toDatetimeLocal(departure.departure_datetime),
+    estimated_arrival:  toDatetimeLocal(departure.estimated_arrival),
+    vehicle_id:         departure.vehicle ? String(departure.vehicle.id) : '',
+    driver_id:          departure.driver ? String(departure.driver.id) : '',
+    seats_available:    String(departure.seats_available),
+    notes:              departure.notes ?? '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const { data: vehiclesData } = useAvailableVehicles(form.departure_datetime, form.estimated_arrival, departure.id);
+  const { data: driversData } = useAvailableDrivers(form.departure_datetime);
+
+  const vehicles = vehiclesData?.data ?? [];
+  const drivers  = driversData?.data ?? [];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    try {
+      await apiFetch(`/planning/departures/${departure.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          ...form,
+          vehicle_id: form.vehicle_id ? Number(form.vehicle_id) : null,
+          driver_id: form.driver_id ? Number(form.driver_id) : null,
+          seats_available: form.seats_available ? Number(form.seats_available) : null,
+        }),
+      } as RequestInit);
+      setMessage('Départ mis à jour');
+      onSuccess?.();
+    } catch (err: any) {
+      setMessage(err.message || 'Erreur');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {message && <p className="text-xs text-emerald-400">{message}</p>}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Date et heure de départ">
+          <input type="datetime-local" className="input" value={form.departure_datetime} onChange={(e) => setForm({ ...form, departure_datetime: e.target.value, vehicle_id: '' })} />
+        </Field>
+        <Field label="Date et heure d'arrivée estimée">
+          <input type="datetime-local" className="input" value={form.estimated_arrival} onChange={(e) => setForm({ ...form, estimated_arrival: e.target.value, vehicle_id: '' })} />
+        </Field>
+        <Field label="Places disponibles">
+          <input type="number" className="input" value={form.seats_available} onChange={(e) => setForm({ ...form, seats_available: e.target.value })} />
+        </Field>
+        <Field label="Véhicule" description="Se réinitialise si vous changez les horaires">
+          <select className="input" value={form.vehicle_id} onChange={(e) => setForm({ ...form, vehicle_id: e.target.value })}>
+            <option value="">Non affecté</option>
+            {departure.vehicle && !vehicles.some(v => v.id === departure.vehicle!.id) && (
+              <option value={departure.vehicle.id}>{departure.vehicle.plate_number} — {departure.vehicle.model} (actuel)</option>
+            )}
+            {vehicles.map((v) => (
+              <option key={v.id} value={v.id}>{v.plate_number} — {v.model} ({v.capacity} places)</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Chauffeur">
+          <select className="input" value={form.driver_id} onChange={(e) => setForm({ ...form, driver_id: e.target.value })}>
+            <option value="">Non affecté</option>
+            {departure.driver && !drivers.some(d => d.id === departure.driver!.id) && (
+              <option value={departure.driver.id}>{departure.driver.full_name} (actuel)</option>
+            )}
+            {drivers.map((d) => (
+              <option key={d.id} value={d.id}>{d.first_name} {d.last_name} ({d.employee_number})</option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <Field label="Notes" description="Optionnel">
+        <textarea className="input min-h-[90px]" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+      </Field>
+      <button type="submit" disabled={loading} className="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white">
+        {loading ? 'Enregistrement...' : 'Enregistrer les modifications'}
       </button>
     </form>
   );

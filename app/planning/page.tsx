@@ -6,7 +6,7 @@ import { apiFetch, formatFCFA } from '@/lib/api';
 import {
   FormCreateRoute, FormAddRouteStop, FormEditRouteStop,
   FormCreateGate, FormEditGate, FormCreateStation, FormEditStation,
-  FormCreateDeparture, FormUpdateDepartureStatus,
+  FormCreateDeparture, FormEditDeparture, FormUpdateDepartureStatus,
 } from '@/components/planning/PlanningForms';
 import { usePermissions } from '@/lib/permissions';
 
@@ -115,7 +115,7 @@ function RouteCard({ route, selected, onClick }: {
 }
 
 // ── Ligne de départ ───────────────────────────────────────────────────────
-function DepartureRow({ dep }: { dep: Departure }) {
+function DepartureRow({ dep, canWrite, onEdit }: { dep: Departure; canWrite: boolean; onEdit: (dep: Departure) => void }) {
   const [expanded, setExpanded] = useState(false);
   const cfg = STATUS_CFG[dep.status] || STATUS_CFG.scheduled;
 
@@ -272,6 +272,16 @@ function DepartureRow({ dep }: { dep: Departure }) {
               </div>
             )}
           </div>
+          {canWrite && dep.status === 'scheduled' && (
+            <div className="mt-3">
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(dep); }}
+                className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-400"
+              >
+                ✎ Modifier
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -299,6 +309,7 @@ export default function PlanningPage() {
   const [editingGate, setEditingGate] = useState<BoardingGate | null>(null);
   const [showCreateStation, setShowCreateStation] = useState(false);
   const [editingStation, setEditingStation] = useState<Station | null>(null);
+  const [editingDeparture, setEditingDeparture] = useState<Departure | null>(null);
 
   const { data: routesData, isLoading: routesLoading, mutate: mutateRoutes } = useRoutes({ with_stops: '1' });
   const { data: gatesData, isLoading: gatesLoading, mutate: mutateGates } = useGates();
@@ -309,7 +320,7 @@ export default function PlanningPage() {
   if (statusFilter)   departureParams.status    = statusFilter;
   if (selectedRoute)  departureParams.route_id  = String(selectedRoute);
 
-  const { data: departuresData, isLoading: depsLoading } = useDepartures(departureParams);
+  const { data: departuresData, isLoading: depsLoading, mutate: mutateDepartures } = useDepartures(departureParams);
 
   const routes    = routesData?.data ?? [];
   const gates     = gatesData?.data ?? [];
@@ -538,7 +549,7 @@ export default function PlanningPage() {
                   </div>
                 ) : (
                   filteredDepartures.map(dep => (
-                    <DepartureRow key={dep.id} dep={dep} />
+                    <DepartureRow key={dep.id} dep={dep} canWrite={canWrite} onEdit={setEditingDeparture} />
                   ))
                 )}
               </div>
@@ -791,7 +802,22 @@ export default function PlanningPage() {
               </div>
               <button onClick={() => setShowUpdateStatus(false)} className="text-sm text-slate-400">✕</button>
             </div>
-            <FormUpdateDepartureStatus onSuccess={() => { setShowUpdateStatus(false); }} />
+            <FormUpdateDepartureStatus onSuccess={() => { setShowUpdateStatus(false); mutateDepartures(); }} />
+          </div>
+        </div>
+      )}
+
+      {editingDeparture && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-[#080D1A] p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Modifier le départ</h3>
+                <p className="text-xs text-slate-500">{editingDeparture.route.name}</p>
+              </div>
+              <button onClick={() => setEditingDeparture(null)} className="text-sm text-slate-400">✕</button>
+            </div>
+            <FormEditDeparture departure={editingDeparture} onSuccess={() => { setEditingDeparture(null); mutateDepartures(); }} />
           </div>
         </div>
       )}

@@ -125,12 +125,14 @@ export function useStations() {
   );
 }
 
-export function useAvailableVehicles(departureDatetime: string, estimatedArrival: string) {
+export function useAvailableVehicles(departureDatetime: string, estimatedArrival: string, excludeDepartureId?: number) {
   const ready = Boolean(departureDatetime && estimatedArrival);
-  const query = new URLSearchParams({
+  const params: Record<string, string> = {
     departure_datetime: departureDatetime,
     estimated_arrival:  estimatedArrival,
-  }).toString();
+  };
+  if (excludeDepartureId) params.exclude_departure_id = String(excludeDepartureId);
+  const query = new URLSearchParams(params).toString();
 
   return useSWR<{ data: Vehicle[] }>(
     ready ? `/planning/vehicles/available?${query}` : null,
