@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMyTodaySchedule, markMyDepartureStatus, MyDeparture } from '@/hooks/useDriverSelf';
 import { useMyLeaves, LeaveRequest } from '@/hooks/useHr';
 import { FormRequestMyLeave } from '@/components/hr/HrForms';
@@ -79,7 +79,8 @@ function DepartureRow({ dep, onChanged }: { dep: MyDeparture; onChanged: () => v
 }
 
 export default function DriverPage() {
-  const user = getUser();
+  const [userName, setUserName] = useState<string | null>(null);
+  useEffect(() => { setUserName(getUser()?.name ?? null); }, []);
   const { data, isLoading, mutate } = useMyTodaySchedule();
   const { data: leavesData, mutate: mutateLeaves } = useMyLeaves();
   const [showIncidentForm, setShowIncidentForm] = useState(false);
@@ -93,7 +94,7 @@ export default function DriverPage() {
       <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-6">
         <div>
           <h1 className="text-sm font-bold text-white tracking-widest uppercase font-[family-name:var(--font-syne)]">Mon espace</h1>
-          <p className="text-xs text-slate-600">{user?.name ?? 'Chauffeur'} · {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+          <p className="text-xs text-slate-600">{userName ?? 'Chauffeur'} · {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         </div>
       </header>
 
