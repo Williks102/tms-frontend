@@ -2,10 +2,12 @@
 // Utilisé à la fois par proxy.ts (edge) et app/layout.tsx (Server Component) :
 // pas de 'use client', pas d'API navigateur — doit rester exécutable des deux côtés.
 
-export type Role = 'dg' | 'manager' | 'dispatcher' | 'rh' | 'caissier';
+export type Role = 'dg' | 'manager' | 'dispatcher' | 'rh' | 'caissier' | 'driver';
 
 // Chaque entrée liste les rôles autorisés à voir la page (et ses sous-routes).
 // Une page absente de cette liste (ex: /login) n'est pas filtrée ici.
+// Le chauffeur n'a pas accès à /dashboard (KPIs flotte/finance sans intérêt
+// pour lui) — sa page dédiée est /driver, voir LANDING_PAGE ci-dessous.
 export const PAGE_ACCESS: Record<string, Role[]> = {
   '/dashboard': ['dg', 'manager', 'dispatcher', 'rh', 'caissier'],
   '/planning':  ['manager'],
@@ -15,10 +17,27 @@ export const PAGE_ACCESS: Record<string, Role[]> = {
   '/incidents': ['manager', 'dispatcher'],
   '/tickets':   ['manager', 'caissier'],
   '/hr':        ['manager', 'rh'],
+  '/driver':    ['driver'],
 };
 
-// Page de repli sûre pour tous les rôles — sert de cible de redirection.
+// Page de repli sûre pour tous les rôles — sert de cible de redirection par défaut.
 export const FALLBACK_PAGE = '/dashboard';
+
+// Page d'atterrissage après connexion / cible de redirection en cas d'accès
+// refusé — par rôle, car /dashboard ne convient pas à un chauffeur.
+export const LANDING_PAGE: Record<Role, string> = {
+  dg:         '/dashboard',
+  manager:    '/dashboard',
+  dispatcher: '/dashboard',
+  rh:         '/dashboard',
+  caissier:   '/dashboard',
+  driver:     '/driver',
+};
+
+export function landingPageFor(role: Role | null | undefined): string {
+  if (!role) return FALLBACK_PAGE;
+  return LANDING_PAGE[role] ?? FALLBACK_PAGE;
+}
 
 export function canAccessPage(role: Role | null | undefined, pathname: string): boolean {
   const entry = Object.entries(PAGE_ACCESS).find(
@@ -30,5 +49,5 @@ export function canAccessPage(role: Role | null | undefined, pathname: string): 
 }
 
 export function isKnownRole(value: string | undefined): value is Role {
-  return value === 'dg' || value === 'manager' || value === 'dispatcher' || value === 'rh' || value === 'caissier';
+  return value === 'dg' || value === 'manager' || value === 'dispatcher' || value === 'rh' || value === 'caissier' || value === 'driver';
 }

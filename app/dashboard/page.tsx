@@ -2,8 +2,67 @@
 
 import { useState } from 'react';
 import { useDashboardLive, useRentabilite } from '@/hooks/useDashboard';
+import { useMyLeaves, LeaveRequest } from '@/hooks/useHr';
+import { FormRequestMyLeave } from '@/components/hr/HrForms';
 import { formatFCFA, timeAgo, LiveDeparture, Alert } from '@/lib/api';
 import { KpiCard, AlertBadge, StatusDot, SectionTitle, LiveDot } from '@/components/dashboard/ui';
+
+const LEAVE_TYPE_LABEL: Record<string, string> = {
+  conge_paye: 'Congé payé', maladie: 'Maladie', sans_solde: 'Sans solde', autre: 'Autre',
+};
+
+const LEAVE_STATUS_CFG: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  pending:   { label: 'En attente', color: 'text-amber-400',   bg: 'bg-amber-500/10',   border: 'border-amber-500/20'   },
+  approved:  { label: 'Approuvé',   color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+  rejected:  { label: 'Refusé',     color: 'text-red-400',     bg: 'bg-red-500/10',     border: 'border-red-500/20'     },
+  cancelled: { label: 'Annulé',     color: 'text-slate-500',   bg: 'bg-slate-800/40',   border: 'border-slate-700'      },
+};
+
+function formatShortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
+
+// ── Carte "Mes congés" (libre-service, visible par tous les rôles) ─────────
+function MyLeaveCard() {
+  const { data, isLoading, mutate } = useMyLeaves();
+  const [showForm, setShowForm] = useState(false);
+  const leaves = data?.data ?? [];
+
+  return (
+    <div className="bg-[#080D1A] border border-slate-800/60 rounded-xl p-4 mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-[family-name:var(--font-syne)]">Mes congés</p>
+        <button onClick={() => setShowForm(!showForm)}
+          className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${showForm ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'}`}>
+          {showForm ? 'Annuler' : 'Demander un congé'}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="mb-3 pb-3 border-b border-slate-800/60">
+          <FormRequestMyLeave onSuccess={() => { setShowForm(false); mutate(); }} />
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="animate-pulse bg-slate-800/50 rounded-lg h-10" />
+      ) : !leaves.length ? (
+        <p className="text-slate-600 text-xs">Aucune demande de congé</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {leaves.slice(0, 5).map((l: LeaveRequest) => {
+            const cfg = LEAVE_STATUS_CFG[l.status];
+            return (
+              <span key={l.id} className={`inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
+                {LEAVE_TYPE_LABEL[l.type]} · {formatShortDate(l.start_date)}–{formatShortDate(l.end_date)} · {cfg.label}
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Skeleton ──────────────────────────────────────────────────────────────
 function Skeleton({ className = '' }: { className?: string }) {
@@ -273,6 +332,8 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
+
+        <MyLeaveCard />
 
         {/* ── Tabs ── */}
         <div className="flex gap-1 border-b border-slate-800/60 mb-4">

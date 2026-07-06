@@ -91,6 +91,12 @@ export function useLeaveRequests(params: Record<string, string> = {}) {
   );
 }
 
+export function useMyLeaves() {
+  return useSWR<{ data: LeaveRequest[]; total: number; current_page: number; last_page: number }>(
+    '/leaves/mine', apiFetch, { revalidateOnFocus: false }
+  );
+}
+
 export function useDisciplinaryRecords(params: Record<string, string> = {}) {
   const query = new URLSearchParams(params).toString();
   const url   = `/hr/disciplinary${query ? '?' + query : ''}`;

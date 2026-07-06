@@ -37,6 +37,7 @@ async function Sidebar() {
     { href: '/incidents', icon: '⚡', label: 'Incidents'  },
     { href: '/tickets',   icon: '🎫', label: 'Billets'    },
     { href: '/hr',        icon: '🧑‍💼', label: 'RH'         },
+    { href: '/driver',    icon: '🚐', label: 'Mon espace' },
   ];
 
   const navLinks = allNavLinks.filter(

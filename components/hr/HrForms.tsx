@@ -70,6 +70,63 @@ export function FormRequestLeave({ employableType, employableId, onSuccess }: Hr
   );
 }
 
+export function FormRequestMyLeave({ onSuccess }: HrFormsProps) {
+  const [form, setForm] = useState({
+    type: 'conge_paye',
+    start_date: '',
+    end_date: '',
+    reason: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    try {
+      await apiFetch('/leaves/mine', {
+        method: 'POST',
+        body: JSON.stringify(form),
+      } as RequestInit);
+      setMessage('Demande de congé envoyée');
+      onSuccess?.();
+    } catch (err: any) {
+      setMessage(err.message || 'Erreur lors de la création');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {message && <p className="text-xs text-emerald-400">{message}</p>}
+      <Field label="Type de congé">
+        <select className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+          <option value="conge_paye">Congé payé</option>
+          <option value="maladie">Maladie</option>
+          <option value="sans_solde">Sans solde</option>
+          <option value="autre">Autre</option>
+        </select>
+      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Date de début">
+          <input required type="date" className="input" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
+        </Field>
+        <Field label="Date de fin">
+          <input required type="date" className="input" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
+        </Field>
+      </div>
+      <Field label="Motif" description="Optionnel">
+        <textarea className="input" rows={2} value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
+      </Field>
+      <button type="submit" disabled={loading} className="w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white">
+        {loading ? 'Envoi...' : 'Demander mon congé'}
+      </button>
+    </form>
+  );
+}
+
 export function FormDecideLeave({ leaveId, onSuccess }: HrFormsProps & { leaveId: number }) {
   const [decision, setDecision] = useState<'approve' | 'reject'>('approve');
   const [notes, setNotes] = useState('');

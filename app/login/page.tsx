@@ -6,6 +6,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { landingPageFor, isKnownRole } from '@/lib/pageAccess';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/v1', '') || 'http://localhost:8000/api';
 
@@ -55,7 +56,8 @@ export default function LoginPage() {
       saveTokenToCookie(data.token);
       saveRoleToCookie(data.user.role);
 
-      router.push('/dashboard');
+      const role = isKnownRole(data.user.role) ? data.user.role : undefined;
+      router.push(landingPageFor(role));
       router.refresh();
     } catch {
       setError('Impossible de contacter le serveur. Vérifiez que Laravel tourne.');
@@ -175,6 +177,7 @@ export default function LoginPage() {
                 { role: 'DG',         email: 'dg@tms-ci.com'         },
                 { role: 'RH',         email: 'rh@tms-ci.com'         },
                 { role: 'Caissier',   email: 'caissier@tms-ci.com'   },
+                { role: 'Chauffeur',  email: 'ch-2022-001@tms-ci.com'},
               ].map(account => (
                 <button
                   key={account.email}
