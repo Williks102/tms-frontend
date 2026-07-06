@@ -1,5 +1,3 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# tms-frontend — repères pour agents
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+Next.js 16 (App Router, Turbopack) — voir `CLAUDE.md` (racine du repo) pour les conventions complètes du projet : appels HTTP via `lib/api.ts` uniquement, formulaires dans `components/{module}/{Module}Forms.tsx`, `'use client'` seulement si `useState`/`useEffect`/`onClick`, palette de couleurs figée.

@@ -510,7 +510,8 @@ export function FormCreateDeparture({ onSuccess }: FormProps) {
   );
 }
 
-function toDatetimeLocal(iso: string): string {
+function toDatetimeLocal(iso: string | null): string {
+  if (!iso) return '';
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -520,12 +521,16 @@ function toDatetimeLocal(iso: string): string {
 // "Programmé" (voir DepartureService::update côté backend). La ligne n'est
 // volontairement pas modifiable : un trajet erroné doit être annulé et recréé.
 export function FormEditDeparture({ departure, onSuccess }: { departure: Departure; onSuccess?: () => void }) {
+  const isScheduled = departure.status === 'scheduled';
+
   const [form, setForm] = useState({
     departure_datetime: toDatetimeLocal(departure.departure_datetime),
     estimated_arrival:  toDatetimeLocal(departure.estimated_arrival),
     vehicle_id:         departure.vehicle ? String(departure.vehicle.id) : '',
     driver_id:          departure.driver ? String(departure.driver.id) : '',
     seats_available:    String(departure.seats_available),
+    actual_departure:   toDatetimeLocal(departure.actual_departure),
+    actual_arrival:     toDatetimeLocal(departure.actual_arrival),
     notes:              departure.notes ?? '',
   });
   const [loading, setLoading] = useState(false);
@@ -542,14 +547,23 @@ export function FormEditDeparture({ departure, onSuccess }: { departure: Departu
     setLoading(true);
     setMessage(null);
     try {
-      await apiFetch(`/planning/departures/${departure.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          ...form,
+      const payload: Record<string, unknown> = {
+        notes: form.notes,
+        actual_departure: form.actual_departure || null,
+        actual_arrival: form.actual_arrival || null,
+      };
+      if (isScheduled) {
+        Object.assign(payload, {
+          departure_datetime: form.departure_datetime,
+          estimated_arrival: form.estimated_arrival,
+          seats_available: form.seats_available ? Number(form.seats_available) : null,
           vehicle_id: form.vehicle_id ? Number(form.vehicle_id) : null,
           driver_id: form.driver_id ? Number(form.driver_id) : null,
-          seats_available: form.seats_available ? Number(form.seats_available) : null,
-        }),
+        });
+      }
+      await apiFetch(`/planning/departures/${departure.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
       } as RequestInit);
       setMessage('Départ mis à jour');
       onSuccess?.();
@@ -563,39 +577,58 @@ export function FormEditDeparture({ departure, onSuccess }: { departure: Departu
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       {message && <p className="text-xs text-emerald-400">{message}</p>}
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Date et heure de départ">
-          <input type="datetime-local" className="input" value={form.departure_datetime} onChange={(e) => setForm({ ...form, departure_datetime: e.target.value, vehicle_id: '' })} />
-        </Field>
-        <Field label="Date et heure d'arrivée estimée">
-          <input type="datetime-local" className="input" value={form.estimated_arrival} onChange={(e) => setForm({ ...form, estimated_arrival: e.target.value, vehicle_id: '' })} />
-        </Field>
-        <Field label="Places disponibles">
-          <input type="number" className="input" value={form.seats_available} onChange={(e) => setForm({ ...form, seats_available: e.target.value })} />
-        </Field>
-        <Field label="Véhicule" description="Se réinitialise si vous changez les horaires">
-          <select className="input" value={form.vehicle_id} onChange={(e) => setForm({ ...form, vehicle_id: e.target.value })}>
-            <option value="">Non affecté</option>
-            {departure.vehicle && !vehicles.some(v => v.id === departure.vehicle!.id) && (
-              <option value={departure.vehicle.id}>{departure.vehicle.plate_number} — {departure.vehicle.model} (actuel)</option>
-            )}
-            {vehicles.map((v) => (
-              <option key={v.id} value={v.id}>{v.plate_number} — {v.model} ({v.capacity} places)</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Chauffeur">
-          <select className="input" value={form.driver_id} onChange={(e) => setForm({ ...form, driver_id: e.target.value })}>
-            <option value="">Non affecté</option>
-            {departure.driver && !drivers.some(d => d.id === departure.driver!.id) && (
-              <option value={departure.driver.id}>{departure.driver.full_name} (actuel)</option>
-            )}
-            {drivers.map((d) => (
-              <option key={d.id} value={d.id}>{d.first_name} {d.last_name} ({d.employee_number})</option>
-            ))}
-          </select>
-        </Field>
-      </div>
+      {!isScheduled && (
+        <p className="text-[11px] text-slate-500 bg-slate-900/40 rounded-lg px-3 py-2">
+          Ce départ est {DEPARTURE_STATUS_LABELS[departure.status]?.toLowerCase() ?? departure.status} — seules les heures réelles et les notes restent modifiables.
+        </p>
+      )}
+      {isScheduled && (
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Date et heure de départ">
+            <input type="datetime-local" className="input" value={form.departure_datetime} onChange={(e) => setForm({ ...form, departure_datetime: e.target.value, vehicle_id: '' })} />
+          </Field>
+          <Field label="Date et heure d'arrivée estimée">
+            <input type="datetime-local" className="input" value={form.estimated_arrival} onChange={(e) => setForm({ ...form, estimated_arrival: e.target.value, vehicle_id: '' })} />
+          </Field>
+          <Field label="Places disponibles">
+            <input type="number" className="input" value={form.seats_available} onChange={(e) => setForm({ ...form, seats_available: e.target.value })} />
+          </Field>
+          <Field label="Véhicule" description="Se réinitialise si vous changez les horaires">
+            <select className="input" value={form.vehicle_id} onChange={(e) => setForm({ ...form, vehicle_id: e.target.value })}>
+              <option value="">Non affecté</option>
+              {departure.vehicle && !vehicles.some(v => v.id === departure.vehicle!.id) && (
+                <option value={departure.vehicle.id}>{departure.vehicle.plate_number} — {departure.vehicle.model} (actuel)</option>
+              )}
+              {vehicles.map((v) => (
+                <option key={v.id} value={v.id}>{v.plate_number} — {v.model} ({v.capacity} places)</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Chauffeur">
+            <select className="input" value={form.driver_id} onChange={(e) => setForm({ ...form, driver_id: e.target.value })}>
+              <option value="">Non affecté</option>
+              {departure.driver && !drivers.some(d => d.id === departure.driver!.id) && (
+                <option value={departure.driver.id}>{departure.driver.full_name} (actuel)</option>
+              )}
+              {drivers.map((d) => (
+                <option key={d.id} value={d.id}>{d.first_name} {d.last_name} ({d.employee_number})</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      )}
+      {(departure.status === 'departed' || departure.status === 'arrived') && (
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Heure de départ réelle">
+            <input type="datetime-local" className="input" value={form.actual_departure} onChange={(e) => setForm({ ...form, actual_departure: e.target.value })} />
+          </Field>
+          {departure.status === 'arrived' && (
+            <Field label="Heure d'arrivée réelle">
+              <input type="datetime-local" className="input" value={form.actual_arrival} onChange={(e) => setForm({ ...form, actual_arrival: e.target.value })} />
+            </Field>
+          )}
+        </div>
+      )}
       <Field label="Notes" description="Optionnel">
         <textarea className="input min-h-[90px]" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
       </Field>

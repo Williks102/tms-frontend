@@ -14,6 +14,7 @@ export const PAGE_ACCESS: Record<string, Role[]> = {
   '/fuel':      ['manager', 'dispatcher'],
   '/incidents': ['manager', 'dispatcher'],
   '/tickets':   ['manager', 'caissier'],
+  '/hr':        ['manager', 'rh'],
 };
 
 // Page de repli sûre pour tous les rôles — sert de cible de redirection.

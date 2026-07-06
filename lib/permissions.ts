@@ -16,6 +16,7 @@ export const PERMISSIONS = {
   incidentsReport:  ['manager', 'dispatcher'] as Role[], // signaler + actions + médias
   incidentsManage:  ['manager']            as Role[], // changer statut / supprimer
   ticketsWrite:     ['manager', 'caissier'] as Role[], // vente guichet + statut (embarquer/annuler/rembourser)
+  hrManage:         ['manager', 'rh']       as Role[], // congés, disciplinaire — module /hr
 } as const;
 
 export type PermissionKey = keyof typeof PERMISSIONS;

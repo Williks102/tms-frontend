@@ -272,7 +272,7 @@ function DepartureRow({ dep, canWrite, onEdit }: { dep: Departure; canWrite: boo
               </div>
             )}
           </div>
-          {canWrite && dep.status === 'scheduled' && (
+          {canWrite && dep.status !== 'cancelled' && (
             <div className="mt-3">
               <button
                 onClick={(e) => { e.stopPropagation(); onEdit(dep); }}
