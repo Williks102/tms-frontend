@@ -17,7 +17,7 @@ function DepartureCard({ dep }: { dep: LiveDeparture }) {
   return (
     <div className={`
       bg-[#080D1A] border rounded-xl p-4 transition-all hover:border-slate-700
-      ${dep.status === 'departed' ? 'border-emerald-500/20' : 'border-orange-500/20'}
+      ${dep.status === 'departed' ? 'border-emerald-500/20' : dep.status === 'boarding' ? 'border-orange-500/20' : 'border-blue-500/20'}
     `}>
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
@@ -28,7 +28,14 @@ function DepartureCard({ dep }: { dep: LiveDeparture }) {
             {dep.vehicle} · {dep.driver}
           </p>
         </div>
-        <StatusDot status={dep.status} />
+        <div className="flex flex-col items-end gap-1">
+          {dep.boarding_due && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse">
+              ⏰ À embarquer
+            </span>
+          )}
+          <StatusDot status={dep.status} />
+        </div>
       </div>
 
       <div className="flex items-center gap-4 text-xs">

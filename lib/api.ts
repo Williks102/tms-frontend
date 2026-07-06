@@ -105,8 +105,10 @@ export interface LiveDeparture {
   route_code:         string;
   vehicle:            string;
   driver:             string;
-  status:             'boarding' | 'departed';
+  status:             'scheduled' | 'boarding' | 'departed';
   boarding_gate:      string | null;
+  boarding_time:      string | null;
+  boarding_due:       boolean;
   departure_datetime: string;
   estimated_arrival:  string;
   actual_departure:   string | null;
