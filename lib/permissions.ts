@@ -7,6 +7,7 @@ import { getUser, Role } from '@/lib/auth';
 // Mêmes règles que le middleware `role:` côté Laravel (routes/api.php)
 export const PERMISSIONS = {
   planningWrite:    ['manager']            as Role[], // lignes, gabarits, départs
+  vehiclesWrite:    ['manager']            as Role[], // créer/modifier/désactiver un véhicule
   driversWrite:     ['manager']            as Role[], // profil, statut, repos, scores
   driversDocuments: ['manager', 'rh']      as Role[], // documents chauffeurs
   fuelVouchersWrite:['manager']            as Role[], // demande/approbation/refus/consommation bon

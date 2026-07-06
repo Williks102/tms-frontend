@@ -31,6 +31,7 @@ async function Sidebar() {
   const allNavLinks = [
     { href: '/dashboard', icon: '◈', label: 'Dashboard'  },
     { href: '/planning',  icon: '⊞', label: 'Planning'   },
+    { href: '/vehicles',  icon: '🚌', label: 'Véhicules'  },
     { href: '/drivers',   icon: '◉', label: 'Chauffeurs' },
     { href: '/fuel',      icon: '⛽', label: 'Carburant'  },
     { href: '/incidents', icon: '⚡', label: 'Incidents'  },

@@ -9,6 +9,7 @@ export type Role = 'dg' | 'manager' | 'dispatcher' | 'rh' | 'caissier';
 export const PAGE_ACCESS: Record<string, Role[]> = {
   '/dashboard': ['dg', 'manager', 'dispatcher', 'rh', 'caissier'],
   '/planning':  ['manager'],
+  '/vehicles':  ['manager', 'dispatcher'],
   '/drivers':   ['manager', 'rh'],
   '/fuel':      ['manager', 'dispatcher'],
   '/incidents': ['manager', 'dispatcher'],
