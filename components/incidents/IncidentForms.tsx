@@ -1,11 +1,82 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { Field } from '@/components/ui/Field';
+import { useRoutes, useDepartures } from '@/hooks/usePlanning';
 
 interface FormProps {
   onSuccess?: () => void;
+}
+
+// ── Sélection en cascade : trajet → départ (optionnel) ──────────────────────
+// Choisir un départ pré-remplit véhicule/chauffeur (souvent les bons), sans
+// verrouiller les champs : l'incident peut concerner un autre véhicule/chauffeur
+// que ceux affectés au départ (ex: constaté après coup, ou hors trajet).
+function TrajetDepartFields({ departureId, onChange }: {
+  departureId: string;
+  onChange: (fields: { departure_id: string; vehicle_id?: string; driver_id?: string }) => void;
+}) {
+  const [routeId, setRouteId] = useState('');
+
+  const { data: routesData }     = useRoutes();
+  const { data: departuresData } = useDepartures(routeId ? { route_id: routeId, per_page: '50' } : {});
+
+  const routes = routesData?.data ?? [];
+
+  const departures = useMemo(() => (departuresData?.data ?? [])
+    .slice()
+    .sort((a, b) => new Date(b.departure_datetime).getTime() - new Date(a.departure_datetime).getTime()),
+    [departuresData]
+  );
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <Field label="Trajet" description="Optionnel">
+        <select
+          className="input"
+          value={routeId}
+          onChange={(e) => { setRouteId(e.target.value); onChange({ departure_id: '' }); }}
+        >
+          <option value="">Aucun / non lié à un trajet</option>
+          {routes.map(r => (
+            <option key={r.id} value={r.id}>{r.code} · {r.origin_city} → {r.destination_city}</option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Départ" description="Optionnel — si l'incident est lié à un départ précis">
+        <select
+          className="input"
+          value={departureId}
+          disabled={!routeId}
+          onChange={(e) => {
+            const dep = departures.find(d => String(d.id) === e.target.value);
+            onChange({
+              departure_id: e.target.value,
+              vehicle_id: dep?.vehicle ? String(dep.vehicle.id) : undefined,
+              driver_id:  dep?.driver ? String(dep.driver.id) : undefined,
+            });
+          }}
+        >
+          <option value="">
+            {!routeId
+              ? 'Choisissez un trajet d’abord'
+              : !departuresData
+                ? 'Chargement des départs...'
+                : departures.length === 0
+                  ? 'Aucun départ sur ce trajet'
+                  : 'Choisir un départ'}
+          </option>
+          {departures.map(d => (
+            <option key={d.id} value={d.id}>
+              {new Date(d.departure_datetime).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              {d.vehicle ? ` · ${d.vehicle.plate_number}` : ''}
+            </option>
+          ))}
+        </select>
+      </Field>
+    </div>
+  );
 }
 
 export function FormCreateIncident({ onSuccess }: FormProps) {
@@ -51,10 +122,11 @@ export function FormCreateIncident({ onSuccess }: FormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       {message && <p className="text-xs text-emerald-400">{message}</p>}
+      <TrajetDepartFields
+        departureId={form.departure_id}
+        onChange={(fields) => setForm({ ...form, ...fields, vehicle_id: fields.vehicle_id ?? form.vehicle_id, driver_id: fields.driver_id ?? form.driver_id })}
+      />
       <div className="grid grid-cols-2 gap-3">
-        <Field label="ID départ" description="Optionnel — si l'incident est lié à un départ">
-          <input type="number" className="input" placeholder="Ex: 27" value={form.departure_id} onChange={(e) => setForm({ ...form, departure_id: e.target.value })} />
-        </Field>
         <Field label="ID véhicule">
           <input type="number" className="input" placeholder="Ex: 3" value={form.vehicle_id} onChange={(e) => setForm({ ...form, vehicle_id: e.target.value })} />
         </Field>
