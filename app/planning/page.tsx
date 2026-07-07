@@ -6,7 +6,7 @@ import { apiFetch, formatFCFA } from '@/lib/api';
 import {
   FormCreateRoute, FormAddRouteStop, FormEditRouteStop,
   FormCreateGate, FormEditGate, FormCreateStation, FormEditStation,
-  FormCreateDeparture, FormEditDeparture, FormUpdateDepartureStatus,
+  FormCreateDeparture, FormEditDeparture, FormUpdateDepartureStatus, FormChangeDepartureStatus,
 } from '@/components/planning/PlanningForms';
 import { usePermissions } from '@/lib/permissions';
 
@@ -115,7 +115,7 @@ function RouteCard({ route, selected, onClick }: {
 }
 
 // ── Ligne de départ ───────────────────────────────────────────────────────
-function DepartureRow({ dep, canWrite, onEdit }: { dep: Departure; canWrite: boolean; onEdit: (dep: Departure) => void }) {
+function DepartureRow({ dep, canWrite, onEdit, onChangeStatus }: { dep: Departure; canWrite: boolean; onEdit: (dep: Departure) => void; onChangeStatus: (dep: Departure) => void }) {
   const [expanded, setExpanded] = useState(false);
   const cfg = STATUS_CFG[dep.status] || STATUS_CFG.scheduled;
 
@@ -273,12 +273,18 @@ function DepartureRow({ dep, canWrite, onEdit }: { dep: Departure; canWrite: boo
             )}
           </div>
           {canWrite && dep.status !== 'cancelled' && (
-            <div className="mt-3">
+            <div className="mt-3 flex gap-2">
               <button
                 onClick={(e) => { e.stopPropagation(); onEdit(dep); }}
                 className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-400"
               >
                 ✎ Modifier
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onChangeStatus(dep); }}
+                className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-amber-400"
+              >
+                ⇄ Changer de statut
               </button>
             </div>
           )}
@@ -310,6 +316,7 @@ export default function PlanningPage() {
   const [showCreateStation, setShowCreateStation] = useState(false);
   const [editingStation, setEditingStation] = useState<Station | null>(null);
   const [editingDeparture, setEditingDeparture] = useState<Departure | null>(null);
+  const [statusDeparture, setStatusDeparture] = useState<Departure | null>(null);
 
   const { data: routesData, isLoading: routesLoading, mutate: mutateRoutes } = useRoutes({ with_stops: '1' });
   const { data: gatesData, isLoading: gatesLoading, mutate: mutateGates } = useGates();
@@ -549,7 +556,7 @@ export default function PlanningPage() {
                   </div>
                 ) : (
                   filteredDepartures.map(dep => (
-                    <DepartureRow key={dep.id} dep={dep} canWrite={canWrite} onEdit={setEditingDeparture} />
+                    <DepartureRow key={dep.id} dep={dep} canWrite={canWrite} onEdit={setEditingDeparture} onChangeStatus={setStatusDeparture} />
                   ))
                 )}
               </div>
@@ -818,6 +825,21 @@ export default function PlanningPage() {
               <button onClick={() => setEditingDeparture(null)} className="text-sm text-slate-400">✕</button>
             </div>
             <FormEditDeparture departure={editingDeparture} onSuccess={() => { setEditingDeparture(null); mutateDepartures(); }} />
+          </div>
+        </div>
+      )}
+
+      {statusDeparture && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-800 bg-[#080D1A] p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Changer de statut</h3>
+                <p className="text-xs text-slate-500">{statusDeparture.route.name}</p>
+              </div>
+              <button onClick={() => setStatusDeparture(null)} className="text-sm text-slate-400">✕</button>
+            </div>
+            <FormChangeDepartureStatus departure={statusDeparture} onSuccess={() => { setStatusDeparture(null); mutateDepartures(); }} />
           </div>
         </div>
       )}

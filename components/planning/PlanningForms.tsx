@@ -793,3 +793,82 @@ export function FormUpdateDepartureStatus({ onSuccess }: FormProps) {
     </form>
   );
 }
+
+// Variante scopée à un départ déjà connu (ex: bouton "Changer de statut" sur
+// une ligne de départ) — pas de sélecteur trajet/départ, contrairement à
+// FormUpdateDepartureStatus ci-dessus qui sert depuis la barre d'outils.
+export function FormChangeDepartureStatus({ departure, onSuccess }: FormProps & { departure: Departure }) {
+  const allowedStatuses = DEPARTURE_STATUS_TRANSITIONS[departure.status] ?? [];
+  const [status, setStatus] = useState(allowedStatuses[0] ?? '');
+  const [reason, setReason] = useState('');
+  const [actualDeparture, setActualDeparture] = useState('');
+  const [actualArrival, setActualArrival] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    try {
+      await apiFetch(`/planning/departures/${departure.id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status,
+          cancellation_reason: status === 'cancelled' ? reason : undefined,
+          actual_departure: status === 'departed' ? actualDeparture : undefined,
+          actual_arrival: status === 'arrived' ? actualArrival : undefined,
+        }),
+      } as RequestInit);
+      setMessage('Statut mis à jour');
+      onSuccess?.();
+    } catch (err: any) {
+      setMessage(err.message || 'Erreur');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (allowedStatuses.length === 0) {
+    return (
+      <p className="text-xs text-slate-500 bg-slate-900/40 rounded-lg px-3 py-2">
+        Ce départ est {DEPARTURE_STATUS_LABELS[departure.status]?.toLowerCase() ?? departure.status} — aucun changement de statut possible.
+      </p>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {message && <p className="text-xs text-emerald-400">{message}</p>}
+      <Field label="Nouveau statut">
+        <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
+          {allowedStatuses.map(s => (
+            <option key={s} value={s}>{DEPARTURE_STATUS_LABELS[s]}</option>
+          ))}
+        </select>
+      </Field>
+      {status === 'cancelled' && (
+        <Field label="Motif d'annulation" description="Obligatoire, minimum 10 caractères">
+          <textarea className="input min-h-[80px]" placeholder="Raison de l'annulation..." value={reason} onChange={(e) => setReason(e.target.value)} />
+        </Field>
+      )}
+      {status === 'departed' && (
+        <Field label="Heure de départ réelle">
+          <input type="datetime-local" className="input" value={actualDeparture} onChange={(e) => setActualDeparture(e.target.value)} />
+        </Field>
+      )}
+      {status === 'arrived' && (
+        <Field label="Heure d'arrivée réelle">
+          <input type="datetime-local" className="input" value={actualArrival} onChange={(e) => setActualArrival(e.target.value)} />
+        </Field>
+      )}
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full rounded-lg bg-amber-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+      >
+        {loading ? 'Mise à jour...' : 'Mettre à jour'}
+      </button>
+    </form>
+  );
+}
