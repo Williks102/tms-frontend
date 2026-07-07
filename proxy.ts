@@ -21,6 +21,12 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Écran public "Départs / Arrivées" (panneau de gare) — accessible sans
+  // compte, quel que soit le token présent ou non (pas de redirection).
+  if (pathname === '/board' || pathname.startsWith('/board/')) {
+    return NextResponse.next();
+  }
+
   // Pages protégées — token obligatoire
   if (!token) {
     return NextResponse.redirect(new URL('/login', request.url));

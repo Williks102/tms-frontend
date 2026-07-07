@@ -59,6 +59,21 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
   return res.json();
 }
 
+// Variante sans token — écran public (board de gare), pas de compte
+// utilisateur derrière. Ne redirige jamais vers /login sur erreur.
+export async function apiFetchPublic<T>(endpoint: string): Promise<T> {
+  const res = await fetch(`${API_URL}${endpoint}`, {
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    throw new Error(`API error ${res.status} on ${endpoint}`);
+  }
+
+  return res.json();
+}
+
 // ── Types partagés ────────────────────────────────────────────────────────
 export interface FleetStatus {
   on_trip:     number;
@@ -140,6 +155,38 @@ export interface RentabiliteData {
   date:   string;
   lines:  RentabiliteLine[];
   totals: { revenue_fcfa: number; fuel_cost_fcfa: number; net_profit_fcfa: number };
+}
+
+// ── Écran public "Départs / Arrivées" ──────────────────────────────────────
+export interface BoardStation {
+  id:   number;
+  name: string;
+  city: string;
+}
+
+export interface BoardDeparture {
+  id: number;
+  route: {
+    code:             string;
+    name:             string;
+    origin_city:      string;
+    destination_city: string;
+  };
+  vehicle: { plate_number: string } | null;
+  departure_datetime: string;
+  estimated_arrival:  string;
+  actual_departure:   string | null;
+  actual_arrival:     string | null;
+  boarding_gate:      string | null;
+  status:              'scheduled' | 'boarding' | 'departed' | 'arrived';
+  delay_minutes:       number | null;
+}
+
+export interface BoardData {
+  station:      BoardStation | null;
+  departures:   BoardDeparture[];
+  arrivals:     BoardDeparture[];
+  generated_at: string;
 }
 
 export function formatFCFA(n: number): string {

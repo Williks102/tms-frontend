@@ -12,7 +12,7 @@ export default function AppShell({ sidebar, children }: {
 }) {
   const pathname = usePathname();
 
-  if (pathname === '/login') {
+  if (pathname === '/login' || pathname.startsWith('/board')) {
     return <>{children}</>;
   }
 
