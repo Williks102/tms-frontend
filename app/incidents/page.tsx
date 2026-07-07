@@ -5,6 +5,7 @@ import {
   useIncidents, useIncidentDetail, useIncidentStats,
   useQualityDrivers, Incident, IncidentAction,
 } from '@/hooks/useIncidents';
+import { useDepartures } from '@/hooks/usePlanning';
 import { FormCreateIncident, FormAddIncidentAction, FormUpdateIncidentStatus } from '@/components/incidents/IncidentForms';
 import { usePermissions } from '@/lib/permissions';
 
@@ -276,6 +277,31 @@ function IncidentDetail({ incidentId }: { incidentId: number }) {
 function StatsPanel() {
   const { data: stats, isLoading: statsLoading } = useIncidentStats();
   const { data: quality, isLoading: qualLoading } = useQualityDrivers();
+  // Réutilise l'endpoint départs existant (delay_minutes déjà exposé par
+  // DepartureResource) — pas de nouveau contrôleur, tout est calculé ici.
+  const { data: arrivedData, isLoading: punctLoading } = useDepartures({ status: 'arrived', per_page: '100' });
+
+  const punctuality = useMemo(() => {
+    const deps = (arrivedData?.data ?? []).filter(d => d.delay_minutes !== null);
+    if (!deps.length) return null;
+
+    const avgDelay = deps.reduce((sum, d) => sum + (d.delay_minutes ?? 0), 0) / deps.length;
+    const onTimeCount = deps.filter(d => (d.delay_minutes ?? 0) <= 5).length;
+    const onTimePct = Math.round((onTimeCount / deps.length) * 100);
+
+    const byRoute: Record<string, { code: string; name: string; totalDelay: number; count: number }> = {};
+    for (const d of deps) {
+      const key = d.route.code;
+      byRoute[key] ??= { code: d.route.code, name: d.route.name, totalDelay: 0, count: 0 };
+      byRoute[key].totalDelay += d.delay_minutes ?? 0;
+      byRoute[key].count += 1;
+    }
+    const routes = Object.values(byRoute)
+      .map(r => ({ ...r, avgDelay: r.totalDelay / r.count }))
+      .sort((a, b) => b.avgDelay - a.avgDelay);
+
+    return { avgDelay, onTimePct, sampleSize: deps.length, routes };
+  }, [arrivedData]);
 
   return (
     <div className="h-full overflow-y-auto p-5 space-y-4">
@@ -355,6 +381,50 @@ function StatsPanel() {
           </div>
         </>
       ) : null}
+
+      {/* Ponctualité — écarts départs réels vs prévus */}
+      <div className="bg-[#080D1A] border border-slate-800/60 rounded-xl p-4">
+        <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-3 font-[family-name:var(--font-syne)]">
+          ⏱ Ponctualité — réel vs prévu
+        </p>
+        {punctLoading ? (
+          <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10" />)}</div>
+        ) : !punctuality ? (
+          <p className="text-slate-600 text-xs text-center py-4">Aucun départ arrivé à analyser</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="text-center">
+                <p className={`text-xl font-bold font-[family-name:var(--font-syne)] ${punctuality.avgDelay <= 5 ? 'text-emerald-400' : punctuality.avgDelay <= 15 ? 'text-amber-400' : 'text-red-400'}`}>
+                  {punctuality.avgDelay > 0 ? '+' : ''}{Math.round(punctuality.avgDelay)}min
+                </p>
+                <p className="text-[10px] text-slate-600 mt-0.5">Retard moyen</p>
+              </div>
+              <div className="text-center">
+                <p className={`text-xl font-bold font-[family-name:var(--font-syne)] ${punctuality.onTimePct >= 80 ? 'text-emerald-400' : punctuality.onTimePct >= 50 ? 'text-amber-400' : 'text-red-400'}`}>
+                  {punctuality.onTimePct}%
+                </p>
+                <p className="text-[10px] text-slate-600 mt-0.5">À l'heure (±5min)</p>
+              </div>
+            </div>
+            <p className="text-[10px] text-slate-600 uppercase tracking-wider mb-2">Par ligne (pires en premier)</p>
+            <div className="space-y-2">
+              {punctuality.routes.slice(0, 6).map(r => (
+                <div key={r.code} className="flex items-center gap-3 text-xs">
+                  <span className="text-slate-400 flex-1 font-[family-name:var(--font-syne)] truncate">{r.code} · {r.name}</span>
+                  <span className={`font-[family-name:var(--font-mono)] font-bold ${r.avgDelay <= 5 ? 'text-emerald-400' : r.avgDelay <= 15 ? 'text-amber-400' : 'text-red-400'}`}>
+                    {r.avgDelay > 0 ? '+' : ''}{Math.round(r.avgDelay)}min
+                  </span>
+                  <span className="text-slate-600 text-[10px] w-10 text-right">({r.count})</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-slate-700 mt-3 font-[family-name:var(--font-mono)]">
+              Basé sur les {punctuality.sampleSize} derniers départs arrivés
+            </p>
+          </>
+        )}
+      </div>
 
       {/* Scores qualité chauffeurs */}
       <div className="bg-[#080D1A] border border-slate-800/60 rounded-xl p-4">
