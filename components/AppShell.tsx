@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { OnboardingModal } from './OnboardingModal';
 
 // Enveloppe cliente : décide si la sidebar doit s'afficher selon la route.
 // La sidebar (Server Component, lit le cookie de rôle) est passée en prop
@@ -24,6 +25,8 @@ export default function AppShell({ sidebar, children }: {
 
   return (
     <div className="flex min-h-screen print:hidden">
+      <OnboardingModal />
+
       {/* Fond assombri derrière le tiroir mobile */}
       {mobileOpen && (
         <div
