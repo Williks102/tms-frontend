@@ -101,7 +101,7 @@ function DepartureCard({ dep }: { dep: LiveDeparture }) {
         <div>
           <span className="text-slate-600">Départ </span>
           <span className="text-slate-300 font-[family-name:var(--font-mono)]">
-            {new Date(dep.departure_datetime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+            {formatShortDate(dep.departure_datetime)} · {new Date(dep.departure_datetime).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>
         <div>
