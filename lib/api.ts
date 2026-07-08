@@ -1,4 +1,6 @@
 // lib/api.ts — version finale avec token dynamique
+import { logout } from './auth';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 function getToken(): string {
@@ -25,12 +27,13 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
   });
 
   if (res.status === 401) {
-    // Token expiré → redirect login
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('tms_token');
-      localStorage.removeItem('tms_user');
-      window.location.href = '/login';
-    }
+    // Token expiré → déconnexion complète (localStorage ET cookies, voir
+    // logout() dans lib/auth.ts). Sans le nettoyage des cookies, le cookie
+    // tms_token restait valide aux yeux de proxy.ts après ce redirect vers
+    // /login, qui rebondissait aussitôt vers la page d'atterrissage — boucle
+    // de rechargement complet qui remonte AppShell à zéro (tiroir sidebar
+    // refermé) à chaque poll SWR en arrière-plan une fois le token expiré.
+    logout();
     throw new Error('Non authentifié');
   }
 
