@@ -295,7 +295,7 @@ export default function DashboardPage() {
 
         {/* ── Finance Row ── */}
         {!isLoading && !error && live && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6 fade-in">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6 fade-in">
             {[
               {
                 label: 'Revenus estimés aujourd\'hui',
@@ -303,6 +303,13 @@ export default function DashboardPage() {
                 sub:   'billets × capacité',
                 color: 'text-emerald-400',
                 bg:    'border-emerald-500/20',
+              },
+              {
+                label: 'Recette réelle aujourd\'hui',
+                value: formatFCFA(live.finance.revenue_real_today_fcfa),
+                sub:   'billets réellement vendus',
+                color: 'text-purple-400',
+                bg:    'border-purple-500/20',
               },
               {
                 label: 'Coût carburant',

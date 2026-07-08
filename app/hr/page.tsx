@@ -6,7 +6,7 @@ import {
   useLeaveRequests, useDisciplinaryRecords,
   Employee, LeaveRequest, DisciplinaryRecord, EmployableType,
 } from '@/hooks/useHr';
-import { FormRequestLeave, FormDecideLeave, FormCreateDisciplinaryRecord } from '@/components/hr/HrForms';
+import { FormRequestLeave, FormDecideLeave, FormCreateDisciplinaryRecord, FormCreateEmployee, FormImportEmployeesCsv } from '@/components/hr/HrForms';
 import { usePermissions } from '@/lib/permissions';
 
 type Tab = 'dashboard' | 'employees' | 'leaves' | 'disciplinary';
@@ -255,18 +255,32 @@ function EmployeesTab({ canManage }: { canManage: boolean }) {
   const [typeFilter, setTypeFilter] = useState('');
   const [selected, setSelected] = useState<{ type: EmployableType; id: number } | null>(null);
   const [mobileShowList, setMobileShowList] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showImportForm, setShowImportForm] = useState(false);
 
   const params: Record<string, string> = {};
   if (search) params.search = search;
   if (typeFilter) params.type = typeFilter;
 
-  const { data, isLoading } = useEmployees(params);
+  const { data, isLoading, mutate } = useEmployees(params);
   const employees = data?.data ?? [];
 
   return (
     <div className="flex flex-col lg:flex-row lg:h-full">
       <div className={`${mobileShowList ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-96 flex-shrink-0 border-r border-slate-800/60`}>
         <div className="p-4 border-b border-slate-800/60 space-y-2">
+          {canManage && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              <button onClick={() => setShowCreateForm(true)}
+                className="rounded-lg bg-indigo-600 px-3 py-1.5 text-[11px] font-semibold text-white">
+                + Nouveau membre du personnel
+              </button>
+              <button onClick={() => setShowImportForm(true)}
+                className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-[11px] font-semibold text-indigo-400">
+                + Import CSV
+              </button>
+            </div>
+          )}
           <input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)}
             className="w-full bg-slate-800/60 border border-slate-700 text-slate-300 text-xs rounded-lg px-3 py-2 placeholder-slate-600 focus:outline-none focus:border-indigo-500/50" />
           <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
@@ -307,6 +321,36 @@ function EmployeesTab({ canManage }: { canManage: boolean }) {
           </div>
         )}
       </div>
+
+      {showCreateForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-[#080D1A] p-5 max-h-[90vh] overflow-y-auto">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Nouveau membre du personnel</h3>
+                <p className="text-xs text-slate-500">Crée un compte de connexion et lui assigne un rôle</p>
+              </div>
+              <button onClick={() => setShowCreateForm(false)} className="text-sm text-slate-400">✕</button>
+            </div>
+            <FormCreateEmployee onSuccess={() => { setShowCreateForm(false); mutate(); }} />
+          </div>
+        </div>
+      )}
+
+      {showImportForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-[#080D1A] p-5 max-h-[90vh] overflow-y-auto">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Import CSV</h3>
+                <p className="text-xs text-slate-500">Création en masse de comptes personnel</p>
+              </div>
+              <button onClick={() => setShowImportForm(false)} className="text-sm text-slate-400">✕</button>
+            </div>
+            <FormImportEmployeesCsv onSuccess={() => { setShowImportForm(false); mutate(); }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

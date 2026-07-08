@@ -138,9 +138,10 @@ export interface Alert {
 }
 
 export interface FinanceSummary {
-  fuel_cost_today_fcfa: number;
-  pending_vouchers:     number;
-  revenue_today_fcfa:   number;
+  fuel_cost_today_fcfa:    number;
+  pending_vouchers:        number;
+  revenue_today_fcfa:      number;
+  revenue_real_today_fcfa: number;
 }
 
 export interface LiveDeparture {
