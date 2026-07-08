@@ -392,6 +392,12 @@ export default function FuelPage() {
   const [selectedVoucher, setSelectedVoucher] = useState<FuelVoucher | null>(null);
   const [maintenanceFilter, setMaintenanceFilter] = useState('');
   const [actionView, setActionView]           = useState<'voucher' | 'approve' | 'reject' | 'consumption' | 'plan' | 'record' | null>(null);
+  const [mobileShowList, setMobileShowList]   = useState(true);
+
+  const selectVoucher = (v: FuelVoucher | null) => {
+    setSelectedVoucher(v);
+    setMobileShowList(v === null);
+  };
 
   const voucherParams: Record<string, string> = {};
   if (statusFilter) voucherParams.status = statusFilter;
@@ -417,15 +423,15 @@ export default function FuelPage() {
   return (
     <div className="min-h-screen bg-[#060A14]">
       {/* Header */}
-      <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-6 gap-4">
-        <div>
+      <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-4 sm:px-6 gap-4">
+        <div className="min-w-0">
           <h1 className="text-sm font-bold text-white tracking-widest uppercase font-[family-name:var(--font-syne)]">
             Carburant & Maintenance
           </h1>
-          <p className="text-xs text-slate-600">Gestion des bons et du parc</p>
+          <p className="text-xs text-slate-600 truncate hidden sm:block">Gestion des bons et du parc</p>
         </div>
 
-        <div className="ml-auto hidden md:flex items-center gap-3">
+        <div className="ml-auto hidden lg:flex items-center gap-3">
           {[
             { label: 'En attente',  value: stats.pending,  color: stats.pending > 0  ? 'text-amber-400'   : 'text-slate-400' },
             { label: 'Approuvés',   value: stats.approved, color: 'text-blue-400'    },
@@ -467,7 +473,7 @@ export default function FuelPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-800/60 px-6 bg-[#080D1A]">
+      <div className="flex border-b border-slate-800/60 px-4 sm:px-6 bg-[#080D1A]">
         {[
           { id: 'vouchers',     label: '⛽ Bons Carburant', count: vouchers.length },
           { id: 'maintenance',  label: '🔧 Maintenance',   count: dueCount, alert: dueCount > 0 },
@@ -495,15 +501,15 @@ export default function FuelPage() {
 
       {/* ── Tab Bons Carburant ── */}
       {activeTab === 'vouchers' && (
-        <div className="flex h-[calc(100vh-7rem)]">
+        <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-7rem)]">
 
           {/* Liste bons */}
-          <div className="w-80 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A] flex flex-col">
+          <div className={`${mobileShowList ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-80 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A]`}>
             {/* Filtre statut */}
             <div className="p-3 border-b border-slate-800/60">
               <select
                 value={statusFilter}
-                onChange={e => { setStatusFilter(e.target.value); setSelectedVoucher(null); }}
+                onChange={e => { setStatusFilter(e.target.value); selectVoucher(null); }}
                 className="w-full bg-slate-800/60 border border-slate-700 text-slate-300 text-xs rounded-lg px-3 py-2 font-[family-name:var(--font-syne)] focus:outline-none focus:border-orange-500/50"
               >
                 <option value="">Tous les bons</option>
@@ -528,7 +534,7 @@ export default function FuelPage() {
                     key={v.id}
                     voucher={v}
                     selected={selectedVoucher?.id === v.id}
-                    onClick={() => setSelectedVoucher(selectedVoucher?.id === v.id ? null : v)}
+                    onClick={() => selectVoucher(selectedVoucher?.id === v.id ? null : v)}
                   />
                 ))
               )}
@@ -536,7 +542,13 @@ export default function FuelPage() {
           </div>
 
           {/* Panel droit */}
-          <div className="flex-1 overflow-hidden bg-[#060A14]">
+          <div className={`${mobileShowList ? 'hidden' : 'block'} lg:block flex-1 overflow-hidden bg-[#060A14]`}>
+            <button
+              onClick={() => setMobileShowList(true)}
+              className="lg:hidden w-full flex items-center gap-1.5 px-4 py-2.5 border-b border-slate-800/60 bg-[#080D1A] text-xs text-slate-400 hover:text-white"
+            >
+              ← Retour à la liste
+            </button>
             {selectedVoucher ? (
               <VoucherDetail voucher={selectedVoucher} />
             ) : (
@@ -553,7 +565,7 @@ export default function FuelPage() {
                       {vouchers.filter(v => v.status === 'pending').map(v => (
                         <button
                           key={v.id}
-                          onClick={() => setSelectedVoucher(v)}
+                          onClick={() => selectVoucher(v)}
                           className="w-full text-left flex items-center gap-3 p-3 bg-amber-500/5 border border-amber-500/10 rounded-lg hover:border-amber-500/30 transition-all"
                         >
                           <span className="text-sm">⛽</span>
@@ -592,7 +604,7 @@ export default function FuelPage() {
                         return (
                           <button
                             key={v.id}
-                            onClick={() => setSelectedVoucher(v)}
+                            onClick={() => selectVoucher(v)}
                             className="w-full text-left flex items-center gap-3 p-3 bg-red-500/5 border border-red-500/10 rounded-lg hover:border-red-500/30 transition-all"
                           >
                             <span className="text-sm">⛽</span>

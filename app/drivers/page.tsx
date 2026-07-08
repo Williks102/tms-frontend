@@ -142,7 +142,7 @@ function DriverPanel({ driverId }: { driverId: number }) {
         </div>
       </div>
 
-      <div className="flex gap-1 px-6 pt-4 border-b border-slate-800/40">
+      <div className="flex gap-1 px-4 sm:px-6 pt-4 border-b border-slate-800/40">
         {[{ id: 'overview', label: 'Profil' }, { id: 'trips', label: 'Voyages' }, { id: 'scores', label: 'Scores' }].map(t => (
           <button key={t.id} onClick={() => setTab(t.id as any)}
             className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all font-[family-name:var(--font-syne)]
@@ -367,6 +367,7 @@ export default function DriversPage() {
   const [searchQuery, setSearchQuery]   = useState('');
   const [rightPanel, setRightPanel]     = useState<'detail' | 'ranking'>('ranking');
   const [actionView, setActionView]     = useState<'create' | 'document' | 'status' | null>(null);
+  const [mobileShowList, setMobileShowList] = useState(true);
 
   const params: Record<string, string> = {};
   if (statusFilter) params.status = statusFilter;
@@ -389,12 +390,12 @@ export default function DriversPage() {
 
   return (
     <div className="min-h-screen bg-[#060A14]">
-      <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-6 gap-4">
-        <div>
+      <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-4 sm:px-6 gap-4">
+        <div className="min-w-0">
           <h1 className="text-sm font-bold text-white tracking-widest uppercase font-[family-name:var(--font-syne)]">Chauffeurs</h1>
-          <p className="text-xs text-slate-600">Gestion des chauffeurs et scores de conduite</p>
+          <p className="text-xs text-slate-600 truncate hidden sm:block">Gestion des chauffeurs et scores de conduite</p>
         </div>
-        <div className="ml-auto hidden md:flex items-center gap-1">
+        <div className="ml-auto hidden lg:flex items-center gap-1">
           {[
             { label: 'Disponibles', value: stats.available, color: 'text-emerald-400' },
             { label: 'En service',  value: stats.on_duty,   color: 'text-blue-400'    },
@@ -410,7 +411,7 @@ export default function DriversPage() {
       </header>
 
       <div className="border-b border-slate-800/60 bg-[#080D1A] p-4">
-        <div className="mb-3 flex gap-2">
+        <div className="mb-3 flex flex-wrap gap-2">
           {(['create','document','status'] as const)
             .filter(action => action === 'document' ? canDocuments : canWrite)
             .map((action) => (
@@ -424,9 +425,9 @@ export default function DriversPage() {
         {actionView === 'status' && selectedId && <FormChangeDriverStatus driverId={selectedId} onSuccess={() => setActionView(null)} />}
       </div>
 
-      <div className="flex h-[calc(100vh-3.5rem)]">
+      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-3.5rem)]">
         {/* Liste */}
-        <div className="w-80 flex-shrink-0 border-r border-slate-800/60 flex flex-col bg-[#080D1A]">
+        <div className={`${mobileShowList ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-80 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A]`}>
           <div className="p-4 border-b border-slate-800/60 space-y-2">
             <input type="text" placeholder="Rechercher..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
               className="w-full bg-slate-800/60 border border-slate-700 text-slate-300 text-xs rounded-lg px-3 py-2 placeholder-slate-600 font-[family-name:var(--font-syne)] focus:outline-none focus:border-indigo-500/50" />
@@ -445,7 +446,7 @@ export default function DriversPage() {
               ? Array.from({ length: 6 }).map((_, i) => <Sk key={i} className="h-20" />)
               : filtered.map(d => (
                 <DriverCard key={d.id} driver={d} selected={selectedId === d.id}
-                  onClick={() => { setSelectedId(d.id); setRightPanel('detail'); }} />
+                  onClick={() => { setSelectedId(d.id); setRightPanel('detail'); setMobileShowList(false); }} />
               ))
             }
           </div>
@@ -457,8 +458,14 @@ export default function DriversPage() {
         </div>
 
         {/* Panneau droit */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex gap-1 px-6 pt-4 border-b border-slate-800/60 bg-[#060A14]">
+        <div className={`${mobileShowList ? 'hidden' : 'flex'} lg:flex flex-1 flex-col overflow-hidden`}>
+          <button
+            onClick={() => setMobileShowList(true)}
+            className="lg:hidden flex items-center gap-1.5 px-4 py-2.5 border-b border-slate-800/60 bg-[#080D1A] text-xs text-slate-400 hover:text-white flex-shrink-0"
+          >
+            ← Retour à la liste
+          </button>
+          <div className="flex gap-1 px-4 sm:px-6 pt-4 border-b border-slate-800/60 bg-[#060A14]">
             <button onClick={() => setRightPanel('ranking')}
               className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all font-[family-name:var(--font-syne)]
                 ${rightPanel === 'ranking' ? 'border-indigo-400 text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>

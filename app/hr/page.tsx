@@ -254,6 +254,7 @@ function EmployeesTab({ canManage }: { canManage: boolean }) {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [selected, setSelected] = useState<{ type: EmployableType; id: number } | null>(null);
+  const [mobileShowList, setMobileShowList] = useState(true);
 
   const params: Record<string, string> = {};
   if (search) params.search = search;
@@ -263,8 +264,8 @@ function EmployeesTab({ canManage }: { canManage: boolean }) {
   const employees = data?.data ?? [];
 
   return (
-    <div className="flex h-full">
-      <div className="w-96 flex-shrink-0 border-r border-slate-800/60 flex flex-col">
+    <div className="flex flex-col lg:flex-row lg:h-full">
+      <div className={`${mobileShowList ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-96 flex-shrink-0 border-r border-slate-800/60`}>
         <div className="p-4 border-b border-slate-800/60 space-y-2">
           <input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)}
             className="w-full bg-slate-800/60 border border-slate-700 text-slate-300 text-xs rounded-lg px-3 py-2 placeholder-slate-600 focus:outline-none focus:border-indigo-500/50" />
@@ -279,7 +280,7 @@ function EmployeesTab({ canManage }: { canManage: boolean }) {
           {isLoading
             ? Array.from({ length: 6 }).map((_, i) => <Sk key={i} className="h-16" />)
             : employees.map((e: Employee) => (
-              <button key={`${e.type}-${e.id}`} onClick={() => setSelected({ type: e.type, id: e.id })}
+              <button key={`${e.type}-${e.id}`} onClick={() => { setSelected({ type: e.type, id: e.id }); setMobileShowList(false); }}
                 className={`w-full text-left p-3 rounded-xl border transition-all
                   ${selected?.type === e.type && selected?.id === e.id ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-[#080D1A] border-slate-800/60 hover:border-slate-700'}`}>
                 <p className="text-xs font-bold text-white truncate">{e.name}</p>
@@ -291,9 +292,15 @@ function EmployeesTab({ canManage }: { canManage: boolean }) {
           {!isLoading && !employees.length && <p className="text-slate-600 text-xs text-center py-8">Aucun résultat</p>}
         </div>
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <div className={`${mobileShowList ? 'hidden' : 'block'} lg:block flex-1 overflow-y-auto`}>
+        <button
+          onClick={() => setMobileShowList(true)}
+          className="lg:hidden w-full flex items-center gap-1.5 px-4 py-2.5 border-b border-slate-800/60 bg-[#080D1A] text-xs text-slate-400 hover:text-white"
+        >
+          ← Retour à la liste
+        </button>
         {selected ? (
-          <EmployeeDetailPanel type={selected.type} id={selected.id} canManage={canManage} onClose={() => setSelected(null)} />
+          <EmployeeDetailPanel type={selected.type} id={selected.id} canManage={canManage} onClose={() => { setSelected(null); setMobileShowList(true); }} />
         ) : (
           <div className="flex items-center justify-center h-full">
             <p className="text-slate-500 text-sm">Sélectionner un employé</p>
@@ -379,24 +386,24 @@ export default function HrPage() {
 
   return (
     <div className="min-h-screen bg-[#060A14]">
-      <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-6">
-        <div>
+      <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-4 sm:px-6">
+        <div className="min-w-0">
           <h1 className="text-sm font-bold text-white tracking-widest uppercase font-[family-name:var(--font-syne)]">Ressources Humaines</h1>
-          <p className="text-xs text-slate-600">Personnel, congés et suivi disciplinaire</p>
+          <p className="text-xs text-slate-600 truncate hidden sm:block">Personnel, congés et suivi disciplinaire</p>
         </div>
       </header>
 
-      <div className="flex gap-1 px-6 pt-4 border-b border-slate-800/60 bg-[#060A14]">
+      <div className="flex gap-1 px-4 sm:px-6 pt-4 border-b border-slate-800/60 bg-[#060A14] overflow-x-auto">
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)}
-            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all font-[family-name:var(--font-syne)]
+            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-b-2 transition-all font-[family-name:var(--font-syne)] whitespace-nowrap
               ${tab === t.id ? 'border-indigo-400 text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
             {t.label}
           </button>
         ))}
       </div>
 
-      <div className="h-[calc(100vh-3.5rem-3rem)] overflow-y-auto">
+      <div className="lg:h-[calc(100vh-3.5rem-3rem)] overflow-y-auto">
         {tab === 'dashboard'    && <DashboardTab canManage={canManage} />}
         {tab === 'employees'    && <EmployeesTab canManage={canManage} />}
         {tab === 'leaves'       && <LeavesTab canManage={canManage} />}

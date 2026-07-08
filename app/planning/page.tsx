@@ -338,6 +338,10 @@ export default function PlanningPage() {
   const [statusDeparture, setStatusDeparture] = useState<Departure | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  // Mobile (< lg) : sidebar lignes et contenu principal ne s'affichent jamais
+  // côte à côte — sélectionner une ligne bascule vers le contenu, comme un
+  // pattern master-detail (même logique que /incidents et /tickets)
+  const [mobileShowList, setMobileShowList] = useState(true);
 
   const { data: routesData, isLoading: routesLoading, mutate: mutateRoutes } = useRoutes({ with_stops: '1' });
   const { data: gatesData, isLoading: gatesLoading, mutate: mutateGates } = useGates();
@@ -462,7 +466,7 @@ export default function PlanningPage() {
   return (
     <div className="min-h-screen bg-[#060A14]">
       {/* Header */}
-      <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-6 gap-4">
+      <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-4 sm:px-6 gap-4">
         <div>
           <h1 className="text-sm font-bold text-white tracking-widest uppercase font-[family-name:var(--font-syne)]">
             Planning
@@ -486,16 +490,16 @@ export default function PlanningPage() {
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-3.5rem)]">
+      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-3.5rem)]">
 
         {/* ── Sidebar lignes ── */}
-        <aside className="w-72 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A] flex flex-col">
+        <aside className={`${mobileShowList ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-72 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A]`}>
           <div className="p-4 border-b border-slate-800/60">
             <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-3 font-[family-name:var(--font-syne)]">
               Lignes actives
             </p>
             <button
-              onClick={() => setSelectedRoute(null)}
+              onClick={() => { setSelectedRoute(null); setMobileShowList(false); }}
               className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all mb-2 font-[family-name:var(--font-syne)]
                 ${!selectedRoute
                   ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
@@ -515,7 +519,7 @@ export default function PlanningPage() {
                   key={route.id}
                   route={route}
                   selected={selectedRoute === route.id}
-                  onClick={() => setSelectedRoute(selectedRoute === route.id ? null : route.id)}
+                  onClick={() => { setSelectedRoute(selectedRoute === route.id ? null : route.id); setMobileShowList(false); }}
                 />
               ))
             )}
@@ -523,10 +527,17 @@ export default function PlanningPage() {
         </aside>
 
         {/* ── Contenu principal ── */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className={`${mobileShowList ? 'hidden' : 'flex'} lg:flex flex-1 flex-col overflow-hidden`}>
+          {/* Retour — mobile uniquement */}
+          <button
+            onClick={() => setMobileShowList(true)}
+            className="lg:hidden flex items-center gap-1.5 px-4 py-2.5 border-b border-slate-800/60 bg-[#080D1A] text-xs text-slate-400 hover:text-white flex-shrink-0"
+          >
+            ← Lignes
+          </button>
 
           {/* Tabs */}
-          <div className="flex gap-1 px-6 pt-4 border-b border-slate-800/60 bg-[#060A14]">
+          <div className="flex gap-1 px-4 sm:px-6 pt-4 border-b border-slate-800/60 bg-[#060A14]">
             {[
               { id: 'departures', label: '🚌 Départs' },
               { id: 'routes',     label: '🗺 Lignes' },
@@ -550,7 +561,7 @@ export default function PlanningPage() {
           {activeTab === 'departures' && (
             <div className="flex-1 overflow-y-auto">
               {/* Filtres */}
-              <div className="sticky top-0 z-10 bg-[#060A14]/95 backdrop-blur-sm border-b border-slate-800/40 px-6 py-3">
+              <div className="sticky top-0 z-10 bg-[#060A14]/95 backdrop-blur-sm border-b border-slate-800/40 px-4 sm:px-6 py-3">
                 <div className="flex flex-wrap items-center gap-3">
                   {canWrite && (
                     <>

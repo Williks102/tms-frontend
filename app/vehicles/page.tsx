@@ -94,7 +94,7 @@ function VehiclePanel({ vehicleId, canWrite, onEdit }: { vehicleId: number; canW
         </div>
       </div>
 
-      <div className="flex gap-1 px-6 pt-4 border-b border-slate-800/40">
+      <div className="flex gap-1 px-4 sm:px-6 pt-4 border-b border-slate-800/40">
         {[
           { id: 'overview', label: 'Aperçu' },
           { id: 'maintenance', label: 'Maintenance' },
@@ -234,6 +234,12 @@ export default function VehiclesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+  const [mobileShowList, setMobileShowList] = useState(true);
+
+  const handleSelectVehicle = (id: number) => {
+    setSelectedId(id);
+    setMobileShowList(false);
+  };
 
   const params: Record<string, string> = {};
   if (statusFilter) params.status = statusFilter;
@@ -251,12 +257,12 @@ export default function VehiclesPage() {
 
   return (
     <div className="min-h-screen bg-[#060A14]">
-      <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-6 gap-4">
-        <div>
+      <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-4 sm:px-6 gap-4">
+        <div className="min-w-0">
           <h1 className="text-sm font-bold text-white tracking-widest uppercase font-[family-name:var(--font-syne)]">Véhicules</h1>
-          <p className="text-xs text-slate-600">Parc de véhicules — maintenance, incidents, carburant</p>
+          <p className="text-xs text-slate-600 truncate hidden sm:block">Parc de véhicules — maintenance, incidents, carburant</p>
         </div>
-        <div className="ml-auto hidden md:flex items-center gap-1">
+        <div className="ml-auto hidden lg:flex items-center gap-1">
           {[
             { label: 'Disponibles', value: stats.available,   color: 'text-emerald-400' },
             { label: 'En route',    value: stats.on_trip,     color: 'text-blue-400'    },
@@ -279,8 +285,8 @@ export default function VehiclesPage() {
         </div>
       )}
 
-      <div className="flex h-[calc(100vh-3.5rem)]">
-        <div className="w-80 flex-shrink-0 border-r border-slate-800/60 flex flex-col bg-[#080D1A]">
+      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-3.5rem)]">
+        <div className={`${mobileShowList ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-80 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A]`}>
           <div className="p-4 border-b border-slate-800/60 space-y-2">
             <input type="text" placeholder="Rechercher plaque ou modèle..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
               className="w-full bg-slate-800/60 border border-slate-700 text-slate-300 text-xs rounded-lg px-3 py-2 placeholder-slate-600 font-[family-name:var(--font-syne)] focus:outline-none focus:border-blue-500/50" />
@@ -300,7 +306,7 @@ export default function VehiclesPage() {
               : vehicles.length === 0
                 ? <p className="text-center text-slate-600 text-xs py-10">Aucun véhicule trouvé</p>
                 : vehicles.map(v => (
-                  <VehicleCard key={v.id} vehicle={v} selected={selectedId === v.id} onClick={() => setSelectedId(v.id)} />
+                  <VehicleCard key={v.id} vehicle={v} selected={selectedId === v.id} onClick={() => handleSelectVehicle(v.id)} />
                 ))
             }
           </div>
@@ -311,7 +317,13 @@ export default function VehiclesPage() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-hidden">
+        <div className={`${mobileShowList ? 'hidden' : 'block'} lg:block flex-1 overflow-hidden`}>
+          <button
+            onClick={() => setMobileShowList(true)}
+            className="lg:hidden w-full flex items-center gap-1.5 px-4 py-2.5 border-b border-slate-800/60 bg-[#080D1A] text-xs text-slate-400 hover:text-white"
+          >
+            ← Retour à la liste
+          </button>
           {selectedId ? (
             <VehiclePanel vehicleId={selectedId} canWrite={canWrite} onEdit={setEditingVehicle} />
           ) : (
