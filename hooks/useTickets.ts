@@ -18,6 +18,7 @@ export interface Ticket {
   status:               'pending' | 'paid' | 'boarded' | 'cancelled' | 'refunded';
   purchased_at:         string;
   boarded_at:           string | null;
+  boarded_by:           number | null;
   cancellation_reason:  string | null;
   soldBy?: { id: number; name: string } | null;
   destination_stop?: { id: number; city_name: string; fare_from_origin: number } | null;
@@ -82,6 +83,33 @@ export function useTicketStats() {
 export function useTicketManifest(departureId: number | null) {
   return useSWR<TicketManifest>(
     departureId ? `/tickets/departure/${departureId}/manifest` : null,
+    (url: string) => apiFetch(url),
+    { refreshInterval: 10000 }
+  );
+}
+
+export interface MyTicketsResponse {
+  data:    Ticket[];
+  summary: { count: number; revenue_fcfa: number };
+}
+
+export function useMyTickets(date?: string) {
+  const query = date ? `?date=${date}` : '';
+  return useSWR<MyTicketsResponse>(
+    `/tickets/mine${query}`,
+    (url: string) => apiFetch(url),
+    { refreshInterval: 15000 }
+  );
+}
+
+export interface ScanStats {
+  today_total: number;
+  today_by_me: number;
+}
+
+export function useScanStats() {
+  return useSWR<ScanStats>(
+    '/tickets/scan/stats',
     (url: string) => apiFetch(url),
     { refreshInterval: 10000 }
   );

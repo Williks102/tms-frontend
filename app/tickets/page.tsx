@@ -1,14 +1,10 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import {
-  useTickets, useTicketStats, useTicketManifest, Ticket,
-} from '@/hooks/useTickets';
-import { useRoutes, useDepartures } from '@/hooks/usePlanning';
-import { FormSellPhysicalTicket, FormOnlineTicketDemo, FormUpdateTicketStatus } from '@/components/tickets/TicketForms';
+import { useTickets, useTicketStats, Ticket } from '@/hooks/useTickets';
+import { FormSellPhysicalTicket, FormUpdateTicketStatus } from '@/components/tickets/TicketForms';
 import { PrintTicketButton } from '@/components/tickets/PrintTicketButton';
 import { usePermissions } from '@/lib/permissions';
-import { apiFetch } from '@/lib/api';
 
 // ── Configs ────────────────────────────────────────────────────────────────
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -79,174 +75,19 @@ function TicketRow({ ticket, selected, onClick }: { ticket: Ticket; selected: bo
   );
 }
 
-// ── Sélection en cascade : trajet → départ, pour choisir le manifeste à afficher ──
-function ManifestDeparturePicker({ departureId, onSelect }: { departureId: number | null; onSelect: (id: number | null) => void }) {
-  const [routeId, setRouteId] = useState('');
-
-  const { data: routesData }     = useRoutes();
-  const { data: departuresData } = useDepartures(routeId ? { route_id: routeId, per_page: '50' } : {});
-
-  const routes = routesData?.data ?? [];
-
-  const departures = useMemo(() => (departuresData?.data ?? [])
-    .slice()
-    .sort((a, b) => new Date(b.departure_datetime).getTime() - new Date(a.departure_datetime).getTime()),
-    [departuresData]
-  );
-
-  return (
-    <div className="space-y-3">
-      <div>
-        <label className="block text-[10px] text-slate-500 uppercase tracking-wider mb-2 font-[family-name:var(--font-syne)]">
-          Trajet
-        </label>
-        <select
-          value={routeId}
-          onChange={(e) => { setRouteId(e.target.value); onSelect(null); }}
-          className="w-full bg-slate-800/60 border border-slate-700 text-slate-300 text-xs rounded-lg px-3 py-2 font-[family-name:var(--font-syne)] focus:outline-none focus:border-purple-500/50"
-        >
-          <option value="">Choisir un trajet</option>
-          {routes.map(r => (
-            <option key={r.id} value={r.id}>{r.code} · {r.origin_city} → {r.destination_city}</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="block text-[10px] text-slate-500 uppercase tracking-wider mb-2 font-[family-name:var(--font-syne)]">
-          Départ
-        </label>
-        <select
-          value={departureId ?? ''}
-          disabled={!routeId}
-          onChange={(e) => onSelect(e.target.value ? Number(e.target.value) : null)}
-          className="w-full bg-slate-800/60 border border-slate-700 text-slate-300 text-xs rounded-lg px-3 py-2 font-[family-name:var(--font-syne)] focus:outline-none focus:border-purple-500/50 disabled:opacity-50"
-        >
-          <option value="">
-            {!routeId
-              ? 'Choisissez un trajet d’abord'
-              : !departuresData
-                ? 'Chargement des départs...'
-                : departures.length === 0
-                  ? 'Aucun départ sur ce trajet'
-                  : 'Choisir un départ'}
-          </option>
-          {departures.map(d => (
-            <option key={d.id} value={d.id}>
-              {formatDateTime(d.departure_datetime)} · {d.status}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
-}
-
-function ManifestPanel({ departureId, canWrite }: { departureId: number | null; canWrite: boolean }) {
-  const { data, isLoading, mutate } = useTicketManifest(departureId);
-  const [boardingId, setBoardingId] = useState<number | null>(null);
-
-  if (!departureId) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8">
-        <p className="text-4xl mb-3">🎫</p>
-        <p className="text-slate-500 text-sm font-[family-name:var(--font-syne)]">Choisir un trajet et un départ</p>
-        <p className="text-slate-700 text-xs mt-1">pour afficher la liste d'embarquement</p>
-      </div>
-    );
-  }
-
-  if (isLoading) return <div className="p-6 space-y-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16" />)}</div>;
-  if (!data) return <p className="p-6 text-sm text-slate-500">Départ introuvable</p>;
-
-  const canBoard = data.departure.status === 'boarding' || data.departure.status === 'departed';
-
-  return (
-    <div className="p-6 space-y-4">
-      <div className="bg-[#080D1A] border border-slate-800/60 rounded-xl p-4">
-        <p className="text-sm font-bold text-white font-[family-name:var(--font-syne)]">
-          {data.departure.route.name} · {data.departure.route.code}
-        </p>
-        <p className="text-xs text-slate-500 mt-1">
-          {formatDateTime(data.departure.departure_datetime)}
-          {data.departure.boarding_gate && ` · Quai ${data.departure.boarding_gate}`}
-          {' · '}Statut: {data.departure.status}
-        </p>
-        {canWrite && !canBoard && (
-          <p className="text-[11px] text-amber-500 mt-2">
-            L'embarquement sera possible une fois ce départ passé en statut "Embarquement" ou "En route".
-          </p>
-        )}
-        <div className="grid grid-cols-4 gap-2 mt-3 text-center">
-          {[
-            { label: 'Total',    value: data.summary.total },
-            { label: 'Embarqués', value: data.summary.boarded },
-            { label: 'Guichet',  value: data.summary.physical },
-            { label: 'En ligne', value: data.summary.online },
-          ].map(s => (
-            <div key={s.label} className="bg-slate-900/40 rounded-lg p-2">
-              <p className="text-sm font-bold text-white font-[family-name:var(--font-syne)]">{s.value}</p>
-              <p className="text-[10px] text-slate-600">{s.label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        {data.data.length === 0 ? (
-          <p className="text-center text-slate-600 text-xs py-8">Aucun billet actif sur ce départ</p>
-        ) : data.data.map(ticket => (
-          <div key={ticket.id} className="flex items-center gap-3 p-3 bg-[#080D1A] border border-slate-800/60 rounded-xl">
-            <span className="text-sm w-8 text-center text-slate-500 font-[family-name:var(--font-mono)]">
-              {ticket.seat_number ?? '—'}
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-slate-200 truncate">{ticket.passenger_name}</p>
-              <p className="text-[10px] text-slate-600">{CHANNEL_CFG[ticket.channel].label} · {ticket.reference}</p>
-            </div>
-            <StatusBadge status={ticket.status} />
-            {canWrite && ticket.status === 'paid' && canBoard && (
-              <button
-                onClick={async () => {
-                  setBoardingId(ticket.id);
-                  try {
-                    await apiFetch(`/tickets/${ticket.id}/status`, {
-                      method: 'PATCH',
-                      body: JSON.stringify({ status: 'boarded' }),
-                    } as RequestInit);
-                    mutate();
-                  } catch (err: any) {
-                    alert(err.message || 'Erreur lors de l\'embarquement');
-                  } finally {
-                    setBoardingId(null);
-                  }
-                }}
-                disabled={boardingId === ticket.id}
-                className="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white disabled:opacity-50"
-              >
-                {boardingId === ticket.id ? '...' : 'Embarquer'}
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ══════════════════════════════════════════════════════════════════════════
-// PAGE BILLETTERIE
+// PAGE BILLETTERIE (manager) — vente guichet + suivi des billets.
+// L'embarquement (scan) et le manifeste vivent désormais sur /controle.
 // ══════════════════════════════════════════════════════════════════════════
 export default function TicketsPage() {
   const { can } = usePermissions();
   const canWrite = can('ticketsWrite');
 
-  const [activeTab, setActiveTab]         = useState<'tickets' | 'manifest'>('tickets');
   const [statusFilter, setStatusFilter]   = useState('');
   const [channelFilter, setChannelFilter] = useState('');
   const [searchQuery, setSearchQuery]     = useState('');
   const [selected, setSelected]           = useState<Ticket | null>(null);
-  const [actionView, setActionView]       = useState<'physical' | 'online' | null>(null);
-  const [manifestId, setManifestId]       = useState<number | null>(null);
+  const [showSellForm, setShowSellForm]   = useState(false);
   // Mobile (< lg) : liste et détail billet ne s'affichent jamais côte à côte
   const [mobileShowList, setMobileShowList] = useState(true);
 
@@ -278,7 +119,7 @@ export default function TicketsPage() {
       <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-4 sm:px-6 gap-4">
         <div className="min-w-0">
           <h1 className="text-sm font-bold text-white tracking-widest uppercase font-[family-name:var(--font-syne)]">Billetterie</h1>
-          <p className="text-xs text-slate-600 truncate hidden sm:block">Vente au guichet, achats en ligne et embarquements</p>
+          <p className="text-xs text-slate-600 truncate hidden sm:block">Vente au guichet et suivi des billets</p>
         </div>
         <div className="ml-auto hidden lg:flex items-center gap-3">
           {kpis.map(k => (
@@ -292,153 +133,122 @@ export default function TicketsPage() {
 
       {canWrite && (
         <div className="border-b border-slate-800/60 bg-[#080D1A] p-4">
-          <div className="mb-3 flex flex-wrap gap-2">
-            {(['physical', 'online'] as const).map(action => (
-              <button
-                key={action}
-                onClick={() => setActionView(action)}
-                className={`rounded-lg px-3 py-2 text-xs font-semibold ${actionView === action ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-300'}`}
-              >
-                {action === 'physical' ? 'Vente guichet' : 'Achat en ligne (démo)'}
-              </button>
-            ))}
-          </div>
-          {actionView === 'physical' && <FormSellPhysicalTicket onSuccess={() => { setActionView(null); mutate(); }} />}
-          {actionView === 'online' && <FormOnlineTicketDemo onSuccess={() => { setActionView(null); mutate(); }} />}
+          <button
+            onClick={() => setShowSellForm(v => !v)}
+            className={`rounded-lg px-3 py-2 text-xs font-semibold ${showSellForm ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-300'}`}
+          >
+            Vente guichet
+          </button>
+          {showSellForm && (
+            <div className="mt-3">
+              <FormSellPhysicalTicket onSuccess={() => { setShowSellForm(false); mutate(); }} />
+            </div>
+          )}
         </div>
       )}
 
-      <div className="flex border-b border-slate-800/60 px-4 sm:px-6 bg-[#080D1A]">
-        {[
-          { id: 'tickets',  label: '🎫 Billets' },
-          { id: 'manifest', label: '🧾 Manifeste d\'embarquement' },
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`px-4 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all font-[family-name:var(--font-syne)]
-              ${activeTab === tab.id ? 'border-purple-400 text-purple-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === 'tickets' && (
-        <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-7rem)]">
-          <div className={`${mobileShowList ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-96 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A]`}>
-            <div className="p-3 border-b border-slate-800/60 space-y-2">
-              <input
-                type="text"
-                placeholder="Référence ou nom du passager..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-800/60 border border-slate-700 text-slate-300 text-xs rounded-lg px-3 py-2 placeholder-slate-600 font-[family-name:var(--font-syne)] focus:outline-none focus:border-purple-500/50"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-                  className="bg-slate-800/60 border border-slate-700 text-slate-300 text-xs rounded-lg px-2 py-1.5 font-[family-name:var(--font-syne)] focus:outline-none focus:border-purple-500/50">
-                  <option value="">Tous statuts</option>
-                  <option value="paid">Payé</option>
-                  <option value="boarded">Embarqué</option>
-                  <option value="cancelled">Annulé</option>
-                  <option value="refunded">Remboursé</option>
-                </select>
-                <select value={channelFilter} onChange={e => setChannelFilter(e.target.value)}
-                  className="bg-slate-800/60 border border-slate-700 text-slate-300 text-xs rounded-lg px-2 py-1.5 font-[family-name:var(--font-syne)] focus:outline-none focus:border-purple-500/50">
-                  <option value="">Tous canaux</option>
-                  <option value="physical">Guichet</option>
-                  <option value="online">En ligne</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20" />)
-              ) : tickets.length === 0 ? (
-                <p className="text-center text-slate-600 text-xs py-10">Aucun billet trouvé</p>
-              ) : (
-                tickets.map(ticket => (
-                  <TicketRow key={ticket.id} ticket={ticket} selected={selected?.id === ticket.id}
-                    onClick={() => handleSelectTicket(ticket)} />
-                ))
-              )}
+      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-7rem)]">
+        <div className={`${mobileShowList ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-96 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A]`}>
+          <div className="p-3 border-b border-slate-800/60 space-y-2">
+            <input
+              type="text"
+              placeholder="Référence ou nom du passager..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-800/60 border border-slate-700 text-slate-300 text-xs rounded-lg px-3 py-2 placeholder-slate-600 font-[family-name:var(--font-syne)] focus:outline-none focus:border-purple-500/50"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+                className="bg-slate-800/60 border border-slate-700 text-slate-300 text-xs rounded-lg px-2 py-1.5 font-[family-name:var(--font-syne)] focus:outline-none focus:border-purple-500/50">
+                <option value="">Tous statuts</option>
+                <option value="paid">Payé</option>
+                <option value="boarded">Embarqué</option>
+                <option value="cancelled">Annulé</option>
+                <option value="refunded">Remboursé</option>
+              </select>
+              <select value={channelFilter} onChange={e => setChannelFilter(e.target.value)}
+                className="bg-slate-800/60 border border-slate-700 text-slate-300 text-xs rounded-lg px-2 py-1.5 font-[family-name:var(--font-syne)] focus:outline-none focus:border-purple-500/50">
+                <option value="">Tous canaux</option>
+                <option value="physical">Guichet</option>
+                <option value="online">En ligne</option>
+              </select>
             </div>
           </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20" />)
+            ) : tickets.length === 0 ? (
+              <p className="text-center text-slate-600 text-xs py-10">Aucun billet trouvé</p>
+            ) : (
+              tickets.map(ticket => (
+                <TicketRow key={ticket.id} ticket={ticket} selected={selected?.id === ticket.id}
+                  onClick={() => handleSelectTicket(ticket)} />
+              ))
+            )}
+          </div>
+        </div>
 
-          <div className={`${mobileShowList ? 'hidden' : 'block'} lg:block flex-1 overflow-y-auto bg-[#060A14]`}>
-            <button
-              onClick={() => setMobileShowList(true)}
-              className="lg:hidden w-full flex items-center gap-1.5 px-4 py-2.5 border-b border-slate-800/60 bg-[#080D1A] text-xs text-slate-400 hover:text-white"
-            >
-              ← Retour à la liste
-            </button>
-            <div className="p-6">
-            {selected ? (
-              <div className="max-w-xl space-y-4">
-                <div className="bg-[#080D1A] border border-slate-800/60 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3 gap-2">
-                    <p className="text-base font-bold text-white font-[family-name:var(--font-syne)]">{selected.passenger_name}</p>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <StatusBadge status={selected.status} />
-                      <PrintTicketButton ticket={selected} label="🖨" className="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-xs font-semibold text-slate-300" />
-                    </div>
+        <div className={`${mobileShowList ? 'hidden' : 'block'} lg:block flex-1 overflow-y-auto bg-[#060A14]`}>
+          <button
+            onClick={() => setMobileShowList(true)}
+            className="lg:hidden w-full flex items-center gap-1.5 px-4 py-2.5 border-b border-slate-800/60 bg-[#080D1A] text-xs text-slate-400 hover:text-white"
+          >
+            ← Retour à la liste
+          </button>
+          <div className="p-6">
+          {selected ? (
+            <div className="max-w-xl space-y-4">
+              <div className="bg-[#080D1A] border border-slate-800/60 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3 gap-2">
+                  <p className="text-base font-bold text-white font-[family-name:var(--font-syne)]">{selected.passenger_name}</p>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <StatusBadge status={selected.status} />
+                    <PrintTicketButton ticket={selected} label="🖨" className="rounded-lg bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 text-xs font-semibold text-slate-300" />
                   </div>
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    {[
-                      { label: 'Référence', value: selected.reference },
-                      { label: 'Ligne', value: selected.departure?.route.name ?? `#${selected.departure_id}` },
-                      { label: 'Destination', value: selected.destination_stop?.city_name ?? selected.departure?.route.destination_city ?? '—' },
-                      { label: 'Canal', value: CHANNEL_CFG[selected.channel].label },
-                      { label: 'Prix', value: formatFCFA(selected.price_fcfa) },
-                      { label: 'Siège', value: selected.seat_number ?? '—' },
-                      { label: 'Téléphone', value: selected.passenger_phone ?? '—' },
-                    ].map(item => (
-                      <div key={item.label}>
-                        <p className="text-slate-600 text-[10px] uppercase tracking-wider mb-0.5">{item.label}</p>
-                        <p className="text-slate-300 font-[family-name:var(--font-mono)]">{item.value}</p>
-                      </div>
-                    ))}
-                  </div>
-                  {selected.cancellation_reason && (
-                    <p className="mt-3 text-xs text-red-400">Motif : {selected.cancellation_reason}</p>
-                  )}
                 </div>
-
-                {canWrite && (
-                  <div className="bg-[#080D1A] border border-slate-800/60 rounded-xl p-4">
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-3 font-[family-name:var(--font-syne)]">
-                      Changer le statut
-                    </p>
-                    <FormUpdateTicketStatus
-                      ticketId={selected.id}
-                      currentStatus={selected.status}
-                      onSuccess={() => { mutate(); setSelected(null); }}
-                    />
-                  </div>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  {[
+                    { label: 'Référence', value: selected.reference },
+                    { label: 'Ligne', value: selected.departure?.route.name ?? `#${selected.departure_id}` },
+                    { label: 'Destination', value: selected.destination_stop?.city_name ?? selected.departure?.route.destination_city ?? '—' },
+                    { label: 'Canal', value: CHANNEL_CFG[selected.channel].label },
+                    { label: 'Prix', value: formatFCFA(selected.price_fcfa) },
+                    { label: 'Siège', value: selected.seat_number ?? '—' },
+                    { label: 'Téléphone', value: selected.passenger_phone ?? '—' },
+                  ].map(item => (
+                    <div key={item.label}>
+                      <p className="text-slate-600 text-[10px] uppercase tracking-wider mb-0.5">{item.label}</p>
+                      <p className="text-slate-300 font-[family-name:var(--font-mono)]">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+                {selected.cancellation_reason && (
+                  <p className="mt-3 text-xs text-red-400">Motif : {selected.cancellation_reason}</p>
                 )}
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <p className="text-4xl mb-3">🎫</p>
-                <p className="text-slate-500 text-sm font-[family-name:var(--font-syne)]">Sélectionner un billet</p>
-              </div>
-            )}
-            </div>
-          </div>
-        </div>
-      )}
 
-      {activeTab === 'manifest' && (
-        <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-7rem)]">
-          <div className="w-full lg:w-72 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A] p-4">
-            <ManifestDeparturePicker departureId={manifestId} onSelect={setManifestId} />
-          </div>
-          <div className="flex-1 overflow-y-auto bg-[#060A14]">
-            <ManifestPanel departureId={manifestId} canWrite={canWrite} />
+              {canWrite && (
+                <div className="bg-[#080D1A] border border-slate-800/60 rounded-xl p-4">
+                  <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-3 font-[family-name:var(--font-syne)]">
+                    Changer le statut
+                  </p>
+                  <FormUpdateTicketStatus
+                    ticketId={selected.id}
+                    currentStatus={selected.status}
+                    onSuccess={() => { mutate(); setSelected(null); }}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <p className="text-4xl mb-3">🎫</p>
+              <p className="text-slate-500 text-sm font-[family-name:var(--font-syne)]">Sélectionner un billet</p>
+            </div>
+          )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

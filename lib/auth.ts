@@ -7,7 +7,7 @@ export function getToken(): string {
   return localStorage.getItem('tms_token') || '';
 }
 
-export type Role = 'dg' | 'manager' | 'dispatcher' | 'rh' | 'caissier' | 'driver';
+export type Role = 'dg' | 'manager' | 'dispatcher' | 'rh' | 'caissier' | 'driver' | 'controleur';
 
 export interface AuthUser {
   name:  string;

@@ -263,108 +263,9 @@ export function FormSellPhysicalTicket({ onSuccess }: FormProps) {
   );
 }
 
-// ── Achat en ligne (démo — simule la billetterie web/mobile publique) ─────
-export function FormOnlineTicketDemo({ onSuccess }: FormProps) {
-  const [form, setForm] = useState({
-    departure_id: '',
-    destination_stop_id: '',
-    passenger_name: '',
-    passenger_phone: '',
-    seat_number: '',
-    payment_method: 'mobile_money',
-    price_fcfa: '',
-  });
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [soldTicket, setSoldTicket] = useState<Ticket | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage(null);
-    try {
-      // Endpoint public (hors auth:sanctum) — simule un client achetant en ligne
-      const result = await apiFetch<{ ticket: Ticket }>('/tickets/online', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...form,
-          departure_id: Number(form.departure_id),
-          destination_stop_id: form.destination_stop_id ? Number(form.destination_stop_id) : null,
-          seat_number: form.seat_number || null,
-          price_fcfa: form.price_fcfa ? Number(form.price_fcfa) : null,
-        }),
-      } as RequestInit);
-      setMessage('Achat en ligne confirmé');
-      setSoldTicket(result.ticket);
-    } catch (err: any) {
-      setMessage(err.message || 'Erreur');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (soldTicket) {
-    return (
-      <div className="space-y-3">
-        <p className="text-xs text-emerald-400">Billet {soldTicket.reference} confirmé — {soldTicket.passenger_name}</p>
-        <div className="flex gap-2">
-          <PrintTicketButton ticket={soldTicket} label="🖨 Imprimer le billet" className="rounded-lg bg-blue-600 hover:bg-blue-500 px-3 py-2 text-sm font-semibold text-white" />
-          <button
-            type="button"
-            onClick={() => { setSoldTicket(null); onSuccess?.(); }}
-            className="rounded-lg bg-slate-700 hover:bg-slate-600 px-3 py-2 text-sm font-semibold text-white"
-          >
-            Terminer
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      <p className="text-[11px] text-slate-500">
-        Simule un achat effectué depuis la billetterie web/mobile publique (ClicBillet).
-      </p>
-      {message && <p className="text-xs text-emerald-400">{message}</p>}
-
-      <TrajetDepartSiegeFields
-        departureId={form.departure_id}
-        seatNumber={form.seat_number}
-        destinationStopId={form.destination_stop_id}
-        onChange={(fields) => setForm({ ...form, ...fields })}
-      />
-
-      <Field label="Nom du passager">
-        <input className="input" placeholder="Koffi N'Guessan" value={form.passenger_name} onChange={(e) => setForm({ ...form, passenger_name: e.target.value })} />
-      </Field>
-      <Field label="Téléphone" description="Requis pour la confirmation en ligne">
-        <input className="input" placeholder="+225 07 00 00 00 00" value={form.passenger_phone} onChange={(e) => setForm({ ...form, passenger_phone: e.target.value })} />
-      </Field>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Moyen de paiement">
-          <select className="input" value={form.payment_method} onChange={(e) => setForm({ ...form, payment_method: e.target.value })}>
-            <option value="mobile_money">Mobile Money</option>
-            <option value="card">Carte</option>
-            <option value="online">Paiement en ligne</option>
-          </select>
-        </Field>
-        <Field label="Prix (FCFA)" description="Auto-rempli, modifiable">
-          <input type="number" className="input" placeholder="4500" value={form.price_fcfa} onChange={(e) => setForm({ ...form, price_fcfa: e.target.value })} />
-        </Field>
-      </div>
-      <button
-        type="submit"
-        disabled={loading || !form.departure_id}
-        className="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-      >
-        {loading ? 'Achat...' : 'Confirmer l’achat en ligne'}
-      </button>
-    </form>
-  );
-}
-
-// ── Changer le statut d'un billet (embarquer / annuler / rembourser) ──────
+// ── Changer le statut d'un billet (annuler / rembourser) ──────────────────
+// L'embarquement est retiré de ce formulaire générique — il passe désormais
+// par le scan sur /controle (rôle contrôleur), voir TicketScanner.tsx.
 export function FormUpdateTicketStatus({ ticketId, currentStatus, onSuccess }: {
   ticketId: number;
   currentStatus: string;
@@ -372,7 +273,6 @@ export function FormUpdateTicketStatus({ ticketId, currentStatus, onSuccess }: {
 }) {
   const options = currentStatus === 'paid'
     ? [
-        { value: 'boarded',   label: 'Embarquer' },
         { value: 'cancelled', label: 'Annuler' },
         { value: 'refunded',  label: 'Rembourser' },
       ]
@@ -394,10 +294,7 @@ export function FormUpdateTicketStatus({ ticketId, currentStatus, onSuccess }: {
     try {
       await apiFetch(`/tickets/${ticketId}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({
-          status,
-          cancellation_reason: status !== 'boarded' ? reason : undefined,
-        }),
+        body: JSON.stringify({ status, cancellation_reason: reason }),
       } as RequestInit);
       setMessage('Statut mis à jour');
       onSuccess?.();
@@ -416,11 +313,9 @@ export function FormUpdateTicketStatus({ ticketId, currentStatus, onSuccess }: {
           {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </Field>
-      {status !== 'boarded' && (
-        <Field label="Motif" description="Obligatoire pour annuler ou rembourser">
-          <textarea className="input min-h-[80px]" placeholder="Raison de l'annulation ou du remboursement..." value={reason} onChange={(e) => setReason(e.target.value)} />
-        </Field>
-      )}
+      <Field label="Motif" description="Obligatoire pour annuler ou rembourser">
+        <textarea className="input min-h-[80px]" placeholder="Raison de l'annulation ou du remboursement..." value={reason} onChange={(e) => setReason(e.target.value)} />
+      </Field>
       <button type="submit" disabled={loading} className="w-full rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white">
         {loading ? 'Mise à jour...' : 'Confirmer'}
       </button>

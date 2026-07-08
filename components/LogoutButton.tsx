@@ -7,6 +7,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/v1', '') || 'http://l
 
 const ROLE_LABELS: Record<string, string> = {
   dg: 'DG', manager: 'Manager', dispatcher: 'Dispatcher', rh: 'RH', caissier: 'Caissier',
+  driver: 'Chauffeur', controleur: 'Contrôleur',
 };
 
 export default function LogoutButton() {
