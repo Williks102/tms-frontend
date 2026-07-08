@@ -52,8 +52,10 @@ export default function LogoutButton() {
         </span>
       </div>
 
-      {/* Nom + logout (visible seulement en lg) */}
-      <div className="hidden lg:flex flex-1 items-center justify-between min-w-0">
+      {/* Nom + logout — la sidebar affiche désormais toujours ses labels
+          (en place sur desktop, en tiroir plein sur mobile), donc plus de
+          bascule lg: ici non plus */}
+      <div className="flex flex-1 items-center justify-between min-w-0">
         <div className="min-w-0">
           <p className="text-[11px] text-slate-400 font-semibold font-[family-name:var(--font-syne)] truncate">
             {user?.name ?? 'Manager'}
@@ -74,19 +76,6 @@ export default function LogoutButton() {
           </svg>
         </button>
       </div>
-
-      {/* Mobile: juste le bouton logout */}
-      <button
-        onClick={handleLogout}
-        title="Se déconnecter"
-        className="lg:hidden p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
-      >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-          <polyline points="16 17 21 12 16 7" />
-          <line x1="21" y1="12" x2="9" y2="12" />
-        </svg>
-      </button>
     </div>
   );
 }

@@ -91,14 +91,14 @@ export default function DriverPage() {
 
   return (
     <div className="min-h-screen bg-[#060A14]">
-      <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-6">
-        <div>
+      <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-4 sm:px-6">
+        <div className="min-w-0">
           <h1 className="text-sm font-bold text-white tracking-widest uppercase font-[family-name:var(--font-syne)]">Mon espace</h1>
-          <p className="text-xs text-slate-600">{userName ?? 'Chauffeur'} · {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+          <p className="text-xs text-slate-600 truncate">{userName ?? 'Chauffeur'} · {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         </div>
       </header>
 
-      <div className="p-6 max-w-3xl mx-auto space-y-6">
+      <div className="p-4 sm:p-6 max-w-3xl mx-auto space-y-6">
         {/* Planning du jour */}
         <div>
           <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-3 font-[family-name:var(--font-syne)]">Mon planning du jour</p>

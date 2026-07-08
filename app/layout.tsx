@@ -45,14 +45,14 @@ async function Sidebar() {
   );
 
   return (
-    <aside className="w-16 lg:w-56 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A] flex flex-col">
+    <aside className="w-56 h-full flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A] flex flex-col">
       {/* Logo */}
       <div className="h-14 flex items-center px-4 border-b border-slate-800/60">
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center flex-shrink-0">
             <span className="text-white text-xs font-black font-[family-name:var(--font-syne)]">T</span>
           </div>
-          <div className="hidden lg:block">
+          <div>
             <p className="text-xs font-black text-white tracking-wider font-[family-name:var(--font-syne)]">
               TMS-CI
             </p>
@@ -64,7 +64,7 @@ async function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-4 px-2 space-y-1">
+      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
         {navLinks.map((item) => (
           <a
             key={item.href}
@@ -72,7 +72,7 @@ async function Sidebar() {
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all text-slate-500 hover:text-slate-300 hover:bg-slate-800/40"
           >
             <span className="text-base flex-shrink-0">{item.icon}</span>
-            <span className="hidden lg:block font-[family-name:var(--font-syne)] font-semibold">
+            <span className="font-[family-name:var(--font-syne)] font-semibold">
               {item.label}
             </span>
           </a>
