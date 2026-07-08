@@ -496,6 +496,9 @@ export default function IncidentsPage() {
   const [categoryFilter, setCategoryFilter]     = useState('');
   const [searchQuery, setSearchQuery]           = useState('');
   const [rightPanel, setRightPanel]             = useState<'stats' | 'detail'>('stats');
+  // Mobile (< lg) : liste et panneau droit ne s'affichent jamais côte à côte,
+  // faute de place — un seul visible à la fois, comme un pattern master-detail.
+  const [mobileShowList, setMobileShowList]     = useState(true);
   const [showCreateIncident, setShowCreateIncident] = useState(false);
   const [showActionForm, setShowActionForm] = useState(false);
   const [showStatusForm, setShowStatusForm] = useState(false);
@@ -527,35 +530,46 @@ export default function IncidentsPage() {
   }), [incidents]);
 
   const handleSelect = (id: number) => {
-    setSelectedIncident(selectedIncident === id ? null : id);
+    const next = selectedIncident === id ? null : id;
+    setSelectedIncident(next);
     setRightPanel('detail');
+    setMobileShowList(next === null); // rien sélectionné → retour à la liste sur mobile
+  };
+
+  const showStatsOnMobile = () => {
+    setRightPanel('stats');
+    setMobileShowList(false);
   };
 
   return (
     <div className="min-h-screen bg-[#060A14]">
       {/* Header */}
-      <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-6 gap-4">
+      <header className="min-h-14 border-b border-slate-800/60 bg-[#080D1A] flex flex-wrap items-center gap-y-2 px-4 sm:px-6 gap-4 py-2">
         <div>
           <h1 className="text-sm font-bold text-white tracking-widest uppercase font-[family-name:var(--font-syne)]">
             Incidents & Qualité
           </h1>
-          <p className="text-xs text-slate-600">Contrôle qualité opérationnel</p>
+          <p className="text-xs text-slate-600 hidden sm:block">Contrôle qualité opérationnel</p>
         </div>
 
-        <div className="ml-auto hidden md:flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-2">
           {canReport && (
-            <button onClick={() => setShowCreateIncident(true)} className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white">+ Déclarer</button>
+            <button onClick={() => setShowCreateIncident(true)} className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white whitespace-nowrap">+ Déclarer</button>
           )}
           {selectedIncident && (
             <>
               {canReport && (
-                <button onClick={() => setShowActionForm(true)} className="rounded-lg bg-orange-600 px-3 py-2 text-xs font-semibold text-white">+ Action</button>
+                <button onClick={() => setShowActionForm(true)} className="rounded-lg bg-orange-600 px-3 py-2 text-xs font-semibold text-white whitespace-nowrap">+ Action</button>
               )}
               {canManage && (
-                <button onClick={() => setShowStatusForm(true)} className="rounded-lg bg-slate-700 px-3 py-2 text-xs font-semibold text-white">État</button>
+                <button onClick={() => setShowStatusForm(true)} className="rounded-lg bg-slate-700 px-3 py-2 text-xs font-semibold text-white whitespace-nowrap">État</button>
               )}
             </>
           )}
+        </div>
+
+        {/* KPIs — cachés en dessous de lg, déjà couverts par le panneau Statistiques */}
+        <div className="hidden lg:flex items-center gap-3">
           {[
             { label: 'Total',    value: stats.total,    color: 'text-slate-400'   },
             { label: 'Ouverts',  value: stats.open,     color: 'text-red-400'     },
@@ -570,12 +584,18 @@ export default function IncidentsPage() {
         </div>
       </header>
 
-      <div className="flex h-[calc(100vh-3.5rem)]">
+      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-3.5rem)]">
 
         {/* ── Sidebar incidents ── */}
-        <aside className="w-80 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A] flex flex-col">
+        <aside className={`${mobileShowList ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-80 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A]`}>
           {/* Filtres */}
           <div className="p-3 border-b border-slate-800/60 space-y-2">
+            <button
+              onClick={showStatsOnMobile}
+              className="lg:hidden w-full text-left text-xs font-semibold text-slate-400 hover:text-white bg-slate-800/60 rounded-lg px-3 py-2"
+            >
+              📊 Voir les statistiques & la qualité
+            </button>
             <input
               type="text"
               placeholder="Référence, titre, lieu, véhicule..."
@@ -648,7 +668,15 @@ export default function IncidentsPage() {
         </aside>
 
         {/* ── Panel droit ── */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-[#060A14]">
+        <div className={`${mobileShowList ? 'hidden' : 'flex'} lg:flex flex-1 flex-col overflow-hidden bg-[#060A14]`}>
+          {/* Retour — mobile uniquement */}
+          <button
+            onClick={() => setMobileShowList(true)}
+            className="lg:hidden flex items-center gap-1.5 px-4 py-2.5 border-b border-slate-800/60 bg-[#080D1A] text-xs text-slate-400 hover:text-white"
+          >
+            ← Retour à la liste
+          </button>
+
           {/* Tabs */}
           <div className="flex border-b border-slate-800/60 px-4 bg-[#080D1A]">
             <button

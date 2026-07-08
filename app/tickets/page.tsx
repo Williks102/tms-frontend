@@ -247,6 +247,14 @@ export default function TicketsPage() {
   const [selected, setSelected]           = useState<Ticket | null>(null);
   const [actionView, setActionView]       = useState<'physical' | 'online' | null>(null);
   const [manifestId, setManifestId]       = useState<number | null>(null);
+  // Mobile (< lg) : liste et détail billet ne s'affichent jamais côte à côte
+  const [mobileShowList, setMobileShowList] = useState(true);
+
+  const handleSelectTicket = (ticket: Ticket) => {
+    const next = selected?.id === ticket.id ? null : ticket;
+    setSelected(next);
+    setMobileShowList(next === null);
+  };
 
   const params: Record<string, string> = {};
   if (statusFilter)  params.status  = statusFilter;
@@ -267,12 +275,12 @@ export default function TicketsPage() {
 
   return (
     <div className="min-h-screen bg-[#060A14]">
-      <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-6 gap-4">
-        <div>
+      <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-4 sm:px-6 gap-4">
+        <div className="min-w-0">
           <h1 className="text-sm font-bold text-white tracking-widest uppercase font-[family-name:var(--font-syne)]">Billetterie</h1>
-          <p className="text-xs text-slate-600">Vente au guichet, achats en ligne et embarquements</p>
+          <p className="text-xs text-slate-600 truncate hidden sm:block">Vente au guichet, achats en ligne et embarquements</p>
         </div>
-        <div className="ml-auto hidden md:flex items-center gap-3">
+        <div className="ml-auto hidden lg:flex items-center gap-3">
           {kpis.map(k => (
             <div key={k.label} className="text-center px-3 border-l border-slate-800 first:border-0">
               <p className={`text-lg font-bold font-[family-name:var(--font-syne)] ${k.color}`}>{k.value}</p>
@@ -300,7 +308,7 @@ export default function TicketsPage() {
         </div>
       )}
 
-      <div className="flex border-b border-slate-800/60 px-6 bg-[#080D1A]">
+      <div className="flex border-b border-slate-800/60 px-4 sm:px-6 bg-[#080D1A]">
         {[
           { id: 'tickets',  label: '🎫 Billets' },
           { id: 'manifest', label: '🧾 Manifeste d\'embarquement' },
@@ -317,8 +325,8 @@ export default function TicketsPage() {
       </div>
 
       {activeTab === 'tickets' && (
-        <div className="flex h-[calc(100vh-7rem)]">
-          <div className="w-96 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A] flex flex-col">
+        <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-7rem)]">
+          <div className={`${mobileShowList ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-96 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A]`}>
             <div className="p-3 border-b border-slate-800/60 space-y-2">
               <input
                 type="text"
@@ -352,13 +360,20 @@ export default function TicketsPage() {
               ) : (
                 tickets.map(ticket => (
                   <TicketRow key={ticket.id} ticket={ticket} selected={selected?.id === ticket.id}
-                    onClick={() => setSelected(selected?.id === ticket.id ? null : ticket)} />
+                    onClick={() => handleSelectTicket(ticket)} />
                 ))
               )}
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto bg-[#060A14] p-6">
+          <div className={`${mobileShowList ? 'hidden' : 'block'} lg:block flex-1 overflow-y-auto bg-[#060A14]`}>
+            <button
+              onClick={() => setMobileShowList(true)}
+              className="lg:hidden w-full flex items-center gap-1.5 px-4 py-2.5 border-b border-slate-800/60 bg-[#080D1A] text-xs text-slate-400 hover:text-white"
+            >
+              ← Retour à la liste
+            </button>
+            <div className="p-6">
             {selected ? (
               <div className="max-w-xl space-y-4">
                 <div className="bg-[#080D1A] border border-slate-800/60 rounded-xl p-4">
@@ -409,13 +424,14 @@ export default function TicketsPage() {
                 <p className="text-slate-500 text-sm font-[family-name:var(--font-syne)]">Sélectionner un billet</p>
               </div>
             )}
+            </div>
           </div>
         </div>
       )}
 
       {activeTab === 'manifest' && (
-        <div className="flex h-[calc(100vh-7rem)]">
-          <div className="w-72 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A] p-4">
+        <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-7rem)]">
+          <div className="w-full lg:w-72 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A] p-4">
             <ManifestDeparturePicker departureId={manifestId} onSelect={setManifestId} />
           </div>
           <div className="flex-1 overflow-y-auto bg-[#060A14]">
