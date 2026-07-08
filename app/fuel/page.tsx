@@ -7,6 +7,7 @@ import {
 } from '@/hooks/useFuel';
 import { FormApproveFuelVoucher, FormRecordFuelConsumption, FormRejectFuelVoucher, FormRequestFuelVoucher } from '@/components/fuel/FuelForms';
 import { FormCreateMaintenancePlan, FormRecordMaintenance } from '@/components/fuel/MaintenanceForms';
+import { PrintVoucherButton } from '@/components/comptabilite/PrintVoucherButton';
 import { usePermissions } from '@/lib/permissions';
 
 // ── Configs ────────────────────────────────────────────────────────────────
@@ -175,6 +176,24 @@ function VoucherDetail({ voucher }: { voucher: FuelVoucher }) {
           </div>
           <VoucherStatusBadge status={voucher.status} />
         </div>
+
+        {(voucher.status === 'approved' || voucher.status === 'consumed') && (
+          <div className="mb-3">
+            <PrintVoucherButton
+              title="Bon carburant"
+              reference={`FC-${voucher.id}`}
+              date={voucher.approved_at ?? voucher.requested_at}
+              amount={voucher.total_cost ?? 0}
+              motif={`${voucher.fuel_type.toUpperCase()} — ${voucher.approved_liters ?? voucher.requested_liters} L`}
+              tiersLabel="Station"
+              tiersValue={voucher.station_name}
+              extraRows={[
+                { label: 'Véhicule', value: voucher.vehicle?.plate_number ?? '—' },
+                { label: 'Chauffeur', value: `${voucher.driver?.first_name ?? ''} ${voucher.driver?.last_name ?? ''}`.trim() },
+              ]}
+            />
+          </div>
+        )}
 
         {isAnomaly && voucher.status !== 'rejected' && (
           <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5 mb-3">

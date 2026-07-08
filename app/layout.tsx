@@ -36,10 +36,11 @@ async function Sidebar() {
     { href: '/fuel',      icon: '⛽', label: 'Carburant'  },
     { href: '/incidents', icon: '⚡', label: 'Incidents'  },
     { href: '/tickets',   icon: '🎫', label: 'Billets'    },
-    { href: '/hr',        icon: '🧑‍💼', label: 'RH'         },
-    { href: '/driver',    icon: '🚐', label: 'Mon espace' },
-    { href: '/caisse',    icon: '💰', label: 'Ma caisse'  },
-    { href: '/controle',  icon: '📷', label: 'Contrôle'   },
+    { href: '/hr',            icon: '🧑‍💼', label: 'RH'           },
+    { href: '/comptabilite',  icon: '📊', label: 'Comptabilité' },
+    { href: '/driver',        icon: '🚐', label: 'Mon espace'   },
+    { href: '/caisse',        icon: '💰', label: 'Ma caisse'    },
+    { href: '/controle',      icon: '📷', label: 'Contrôle'     },
   ];
 
   const navLinks = allNavLinks.filter(
