@@ -27,6 +27,11 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Page publique d'achat de billet en ligne — accessible sans compte, comme /board.
+  if (pathname === '/billets' || pathname.startsWith('/billets/')) {
+    return NextResponse.next();
+  }
+
   // Pages protégées — token obligatoire
   if (!token) {
     return NextResponse.redirect(new URL('/login', request.url));

@@ -59,16 +59,42 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
   return res.json();
 }
 
-// Variante sans token — écran public (board de gare), pas de compte
-// utilisateur derrière. Ne redirige jamais vers /login sur erreur.
-export async function apiFetchPublic<T>(endpoint: string): Promise<T> {
+// Variante sans token — pages publiques (board de gare, achat de billet en
+// ligne), pas de compte utilisateur derrière. Ne redirige jamais vers /login
+// sur erreur. Accepte les mêmes options que apiFetch (POST/body inclus) pour
+// pouvoir aussi servir aux écritures publiques (ex: achat de billet).
+export async function apiFetchPublic<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const headers = new Headers(options.headers || {});
+  headers.set('Accept', 'application/json');
+  if (!headers.has('Content-Type') && options.body && !(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json');
+  }
+
   const res = await fetch(`${API_URL}${endpoint}`, {
-    headers: { Accept: 'application/json' },
+    ...options,
+    headers,
     cache: 'no-store',
   });
 
   if (!res.ok) {
-    throw new Error(`API error ${res.status} on ${endpoint}`);
+    let errorMessage = `API error ${res.status} on ${endpoint}`;
+    try {
+      const errorData = await res.json();
+      if (res.status === 422 && errorData.errors) {
+        const validationErrors = Object.entries(errorData.errors)
+          .map(([field, messages]: [string, any]) => {
+            const msgs = Array.isArray(messages) ? messages : [messages];
+            return `${field}: ${msgs.join(', ')}`;
+          })
+          .join(' | ');
+        errorMessage = validationErrors || errorMessage;
+      } else if (errorData.message) {
+        errorMessage = errorData.message;
+      }
+    } catch {
+      // Si la réponse n'est pas du JSON, utiliser le message générique
+    }
+    throw new Error(errorMessage);
   }
 
   return res.json();
@@ -187,6 +213,35 @@ export interface BoardData {
   departures:   BoardDeparture[];
   arrivals:     BoardDeparture[];
   generated_at: string;
+}
+
+// ── Achat de billet en ligne (page publique /billets) ──────────────────────
+export interface PublicRouteStop {
+  id:               number;
+  city_name:        string;
+  stop_order:       number;
+  fare_from_origin: number;
+}
+
+export interface PublicRoute {
+  id:                     number;
+  code:                   string;
+  name:                   string;
+  origin_city:            string;
+  destination_city:       string;
+  distance_km:            number;
+  estimated_duration_min: number;
+  base_fare:              number;
+  is_dynamic:             boolean;
+  stops:                  PublicRouteStop[];
+}
+
+export interface PublicDeparture {
+  id:                  number;
+  departure_datetime:  string;
+  estimated_arrival:   string;
+  seats_available:     number;
+  boarding_gate:       string | null;
 }
 
 export function formatFCFA(n: number): string {

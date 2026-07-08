@@ -18,7 +18,7 @@ export default function AppShell({ sidebar, children }: {
   // Ferme le tiroir automatiquement à chaque navigation (clic sur un lien)
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
-  if (pathname === '/login' || pathname.startsWith('/board')) {
+  if (pathname === '/login' || pathname.startsWith('/board') || pathname.startsWith('/billets')) {
     return <>{children}</>;
   }
 
