@@ -115,17 +115,36 @@ function RouteCard({ route, selected, onClick }: {
 }
 
 // ── Ligne de départ ───────────────────────────────────────────────────────
-function DepartureRow({ dep, canWrite, onEdit, onChangeStatus }: { dep: Departure; canWrite: boolean; onEdit: (dep: Departure) => void; onChangeStatus: (dep: Departure) => void }) {
+function DepartureRow({ dep, canWrite, onEdit, onChangeStatus, selectable, selected, onToggleSelect }: {
+  dep: Departure;
+  canWrite: boolean;
+  onEdit: (dep: Departure) => void;
+  onChangeStatus: (dep: Departure) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: number) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const cfg = STATUS_CFG[dep.status] || STATUS_CFG.scheduled;
 
   return (
-    <div className={`border rounded-xl overflow-hidden transition-all ${cfg.border} bg-[#080D1A]`}>
+    <div className={`border rounded-xl overflow-hidden transition-all ${selected ? 'border-blue-500/50' : cfg.border} bg-[#080D1A]`}>
       {/* Ligne principale */}
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full text-left px-4 py-3 flex items-center gap-4 hover:bg-slate-800/20 transition-all"
       >
+        {/* Sélection (départs "scheduled" uniquement) */}
+        {selectable && (
+          <input
+            type="checkbox"
+            checked={!!selected}
+            onClick={(e) => e.stopPropagation()}
+            onChange={() => onToggleSelect?.(dep.id)}
+            className="w-4 h-4 flex-shrink-0 accent-blue-500"
+          />
+        )}
+
         {/* Heure */}
         <div className="text-center w-14 flex-shrink-0">
           <p className="text-base font-bold text-white font-[family-name:var(--font-mono)]">
@@ -317,6 +336,8 @@ export default function PlanningPage() {
   const [editingStation, setEditingStation] = useState<Station | null>(null);
   const [editingDeparture, setEditingDeparture] = useState<Departure | null>(null);
   const [statusDeparture, setStatusDeparture] = useState<Departure | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const { data: routesData, isLoading: routesLoading, mutate: mutateRoutes } = useRoutes({ with_stops: '1' });
   const { data: gatesData, isLoading: gatesLoading, mutate: mutateGates } = useGates();
@@ -391,6 +412,52 @@ export default function PlanningPage() {
     arrived:   departures.filter(d => d.status === 'arrived').length,
     cancelled: departures.filter(d => d.status === 'cancelled').length,
   }), [departures]);
+
+  // Sélection multiple — uniquement les départs "scheduled" actuellement visibles
+  // (recalculé sur filteredDepartures, donc ignore automatiquement une sélection
+  // devenue invisible après changement de filtre)
+  const scheduledVisible = useMemo(() => filteredDepartures.filter(d => d.status === 'scheduled'), [filteredDepartures]);
+  const selectedScheduledIds = useMemo(
+    () => scheduledVisible.filter(d => selectedIds.has(d.id)).map(d => d.id),
+    [scheduledVisible, selectedIds]
+  );
+  const allScheduledSelected = scheduledVisible.length > 0 && selectedScheduledIds.length === scheduledVisible.length;
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAllScheduled = () => {
+    setSelectedIds(allScheduledSelected ? new Set() : new Set(scheduledVisible.map(d => d.id)));
+  };
+
+  const handleBulkBoarding = async () => {
+    if (selectedScheduledIds.length === 0) return;
+    setBulkLoading(true);
+    try {
+      const res = await apiFetch<{ message: string; updated_ids: number[]; failed: { id: number; reason: string }[] }>(
+        '/planning/departures/bulk-status',
+        { method: 'PATCH', body: JSON.stringify({ departure_ids: selectedScheduledIds, status: 'boarding' }) } as RequestInit
+      );
+      setSelectedIds(new Set());
+      mutateDepartures();
+      if (res.failed.length > 0) {
+        alert(`${res.message}\n\n` + res.failed.map(f => `#${f.id} : ${f.reason}`).join('\n'));
+      }
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la mise à jour groupée');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#060A14]">
@@ -491,6 +558,25 @@ export default function PlanningPage() {
                       <button onClick={() => setShowUpdateStatus(true)} className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white">Éditer statut</button>
                     </>
                   )}
+
+                  {/* Barre d'action groupée — visible dès qu'un départ "scheduled" est sélectionné */}
+                  {canWrite && selectedScheduledIds.length > 0 && (
+                    <div className="flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2">
+                      <span className="text-xs font-semibold text-blue-400">
+                        {selectedScheduledIds.length} sélectionné{selectedScheduledIds.length > 1 ? 's' : ''}
+                      </span>
+                      <button
+                        onClick={handleBulkBoarding}
+                        disabled={bulkLoading}
+                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                      >
+                        {bulkLoading ? 'Mise à jour...' : 'Ouvrir l\'embarquement'}
+                      </button>
+                      <button onClick={() => setSelectedIds(new Set())} className="text-xs text-slate-500 hover:text-slate-300">
+                        Annuler
+                      </button>
+                    </div>
+                  )}
                   {/* Date */}
                   <div className="flex items-center gap-2">
                     <label className="text-[10px] text-slate-500 uppercase tracking-wider font-[family-name:var(--font-syne)]">
@@ -534,6 +620,18 @@ export default function PlanningPage() {
                     />
                   </div>
 
+                  {canWrite && scheduledVisible.length > 0 && (
+                    <label className="flex items-center gap-1.5 text-[11px] text-slate-500 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={allScheduledSelected}
+                        onChange={toggleSelectAllScheduled}
+                        className="w-3.5 h-3.5 accent-blue-500"
+                      />
+                      Tous les programmés
+                    </label>
+                  )}
+
                   <span className="text-xs text-slate-600 font-[family-name:var(--font-mono)] ml-auto">
                     {filteredDepartures.length} résultat{filteredDepartures.length > 1 ? 's' : ''}
                   </span>
@@ -556,7 +654,16 @@ export default function PlanningPage() {
                   </div>
                 ) : (
                   filteredDepartures.map(dep => (
-                    <DepartureRow key={dep.id} dep={dep} canWrite={canWrite} onEdit={setEditingDeparture} onChangeStatus={setStatusDeparture} />
+                    <DepartureRow
+                      key={dep.id}
+                      dep={dep}
+                      canWrite={canWrite}
+                      onEdit={setEditingDeparture}
+                      onChangeStatus={setStatusDeparture}
+                      selectable={canWrite && dep.status === 'scheduled'}
+                      selected={selectedIds.has(dep.id)}
+                      onToggleSelect={toggleSelect}
+                    />
                   ))
                 )}
               </div>
