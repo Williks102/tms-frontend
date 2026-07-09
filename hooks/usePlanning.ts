@@ -60,6 +60,8 @@ export interface Departure {
   boarding_due:        boolean;
   boarding_gate:       string | null;
   seats_available:     number;
+  cargo_capacity_kg:   number | null;
+  cargo_used_kg:       number | null;
   status:              'scheduled' | 'boarding' | 'departed' | 'arrived' | 'cancelled';
   delay_minutes:       number | null;
   cancellation_reason: string | null;

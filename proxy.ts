@@ -32,6 +32,11 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Page publique de suivi de colis — accessible sans compte, comme /board.
+  if (pathname === '/suivi-colis' || pathname.startsWith('/suivi-colis/')) {
+    return NextResponse.next();
+  }
+
   // Pages protégées — token obligatoire
   if (!token) {
     return NextResponse.redirect(new URL('/login', request.url));

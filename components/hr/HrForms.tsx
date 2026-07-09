@@ -179,8 +179,9 @@ const ROLE_OPTIONS: { value: string; label: string }[] = [
   { value: 'rh',         label: 'RH' },
   { value: 'caissier',   label: 'Caissier' },
   { value: 'driver',     label: 'Chauffeur' },
-  { value: 'controleur', label: 'Contrôleur' },
-  { value: 'comptable',  label: 'Comptable' },
+  { value: 'controleur',  label: 'Contrôleur' },
+  { value: 'comptable',   label: 'Comptable' },
+  { value: 'agent_colis', label: 'Agent colis' },
 ];
 
 // ── Créer un membre du personnel (manager, rh) ─────────────────────────────

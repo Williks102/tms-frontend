@@ -17,6 +17,7 @@ export function FormCreateVehicle({ onSuccess }: FormProps) {
     fuel_consumption_per_100km: '',
     current_mileage_km: '',
     maintenance_interval_km: '10000',
+    cargo_capacity_kg: '',
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -34,6 +35,7 @@ export function FormCreateVehicle({ onSuccess }: FormProps) {
           fuel_consumption_per_100km: Number(form.fuel_consumption_per_100km),
           current_mileage_km: form.current_mileage_km ? Number(form.current_mileage_km) : 0,
           maintenance_interval_km: form.maintenance_interval_km ? Number(form.maintenance_interval_km) : 10000,
+          cargo_capacity_kg: form.cargo_capacity_kg ? Number(form.cargo_capacity_kg) : null,
         }),
       } as RequestInit);
       setMessage('Véhicule créé');
@@ -67,6 +69,9 @@ export function FormCreateVehicle({ onSuccess }: FormProps) {
         <Field label="Intervalle maintenance (km)" description="Par défaut 10 000 km">
           <input type="number" className="input" placeholder="10000" value={form.maintenance_interval_km} onChange={(e) => setForm({ ...form, maintenance_interval_km: e.target.value })} />
         </Field>
+        <Field label="Capacité fret (kg)" description="Optionnel — laisser vide si non utilisable pour le service colis">
+          <input type="number" className="input" placeholder="500" value={form.cargo_capacity_kg} onChange={(e) => setForm({ ...form, cargo_capacity_kg: e.target.value })} />
+        </Field>
       </div>
       <button type="submit" disabled={loading} className="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white">
         {loading ? 'Création...' : 'Créer le véhicule'}
@@ -85,6 +90,7 @@ export function FormEditVehicle({ vehicle, onSuccess }: { vehicle: Vehicle; onSu
     maintenance_interval_km: String(vehicle.maintenance_interval_km),
     status: vehicle.status,
     notes: vehicle.notes ?? '',
+    cargo_capacity_kg: vehicle.cargo_capacity_kg != null ? String(vehicle.cargo_capacity_kg) : '',
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -102,6 +108,7 @@ export function FormEditVehicle({ vehicle, onSuccess }: { vehicle: Vehicle; onSu
           fuel_consumption_per_100km: Number(form.fuel_consumption_per_100km),
           current_mileage_km: Number(form.current_mileage_km),
           maintenance_interval_km: Number(form.maintenance_interval_km),
+          cargo_capacity_kg: form.cargo_capacity_kg ? Number(form.cargo_capacity_kg) : null,
         }),
       } as RequestInit);
       setMessage('Véhicule mis à jour');
@@ -134,6 +141,9 @@ export function FormEditVehicle({ vehicle, onSuccess }: { vehicle: Vehicle; onSu
         </Field>
         <Field label="Intervalle maintenance (km)">
           <input type="number" className="input" value={form.maintenance_interval_km} onChange={(e) => setForm({ ...form, maintenance_interval_km: e.target.value })} />
+        </Field>
+        <Field label="Capacité fret (kg)" description="Vide = non utilisable pour le service colis">
+          <input type="number" className="input" value={form.cargo_capacity_kg} onChange={(e) => setForm({ ...form, cargo_capacity_kg: e.target.value })} />
         </Field>
         <Field label="Statut">
           <select className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Vehicle['status'] })}>

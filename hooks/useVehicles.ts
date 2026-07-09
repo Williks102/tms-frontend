@@ -15,6 +15,7 @@ export interface Vehicle {
   maintenance_interval_km:     number;
   status:                      'available' | 'on_trip' | 'boarding' | 'maintenance' | 'inactive';
   notes:                       string | null;
+  cargo_capacity_kg:           number | null;
 }
 
 export interface MaintenancePlanSummary {

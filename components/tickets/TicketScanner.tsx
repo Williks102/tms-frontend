@@ -7,9 +7,10 @@ import jsQR from 'jsqr';
 // saisie toujours visible (douchette USB/Bluetooth qui tape comme un clavier,
 // ou saisie manuelle de la référence). Les deux chemins appellent onDetect
 // avec la même chaîne (la référence du billet, ex: TCK-2026-000042).
-export function TicketScanner({ onDetect, disabled }: {
+export function TicketScanner({ onDetect, disabled, placeholder }: {
   onDetect: (reference: string) => void;
   disabled?: boolean;
+  placeholder?: string;
 }) {
   const videoRef  = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -113,7 +114,7 @@ export function TicketScanner({ onDetect, disabled }: {
           disabled={disabled}
           value={manualRef}
           onChange={(e) => setManualRef(e.target.value)}
-          placeholder="Référence du billet (douchette ou saisie manuelle)"
+          placeholder={placeholder ?? "Référence du billet (douchette ou saisie manuelle)"}
           className="input flex-1 font-[family-name:var(--font-mono)]"
         />
         <button

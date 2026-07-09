@@ -38,6 +38,7 @@ async function Sidebar() {
     { href: '/tickets',   icon: '🎫', label: 'Billets'    },
     { href: '/hr',            icon: '🧑‍💼', label: 'RH'           },
     { href: '/comptabilite',  icon: '📊', label: 'Comptabilité' },
+    { href: '/colis',         icon: '📦', label: 'Colis'        },
     { href: '/driver',        icon: '🚐', label: 'Mon espace'   },
     { href: '/caisse',        icon: '💰', label: 'Ma caisse'    },
     { href: '/controle',      icon: '📷', label: 'Contrôle'     },
