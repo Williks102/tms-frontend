@@ -4,7 +4,8 @@ import { useState } from 'react';
 import {
   useChartOfAccounts, useJournalEntries, useLedger, useTrialBalance,
   useIncomeStatement, useBalanceSheet, useCashVouchers, usePayslips,
-  AccountingAccount, CashVoucher, Payslip,
+  usePayrollTaxBrackets,
+  AccountingAccount, CashVoucher, Payslip, PayrollTaxBracket,
 } from '@/hooks/useComptabilite';
 import {
   FormCreateCashVoucher, FormRejectCashVoucher, FormManualJournalEntry,
@@ -17,7 +18,7 @@ import { ExportCsvButton } from '@/components/ui/ExportCsvButton';
 import { apiFetch } from '@/lib/api';
 import { usePermissions } from '@/lib/permissions';
 
-type Tab = 'journals' | 'ledger' | 'balance' | 'states' | 'vouchers' | 'payroll';
+type Tab = 'journals' | 'ledger' | 'balance' | 'states' | 'vouchers' | 'payroll' | 'tax-brackets';
 
 function formatFCFA(n: number): string {
   return new Intl.NumberFormat('fr-FR').format(Math.round(n)) + ' F';
@@ -561,6 +562,109 @@ function PayrollTab({ canWrite }: { canWrite: boolean }) {
   );
 }
 
+// ── Barème CNPS/ITS ──────────────────────────────────────────────────────
+function BracketRow({ bracket, canWrite, onChanged }: { bracket: PayrollTaxBracket; canWrite: boolean; onChanged: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [maxFcfa, setMaxFcfa] = useState(bracket.max_fcfa !== null ? String(bracket.max_fcfa) : '');
+  const [rate, setRate] = useState(String(bracket.rate_percent));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await apiFetch(`/comptabilite/payroll-tax-brackets/${bracket.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          max_fcfa: maxFcfa.trim() === '' ? null : Number(maxFcfa),
+          rate_percent: Number(rate),
+        }),
+      });
+      setEditing(false);
+      onChanged();
+    } catch (err: any) {
+      setError(err.message || 'Erreur');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <tr className="border-b border-slate-800/40 text-slate-300">
+      <td className="py-2">{bracket.label}</td>
+      <td className="py-2 text-right font-mono">{formatFCFA(bracket.min_fcfa)}</td>
+      <td className="py-2 text-right font-mono">
+        {editing ? (
+          <input type="number" value={maxFcfa} onChange={(e) => setMaxFcfa(e.target.value)} placeholder="illimité"
+            className="w-28 bg-slate-900/60 border border-slate-700 rounded px-2 py-1 text-right text-xs" />
+        ) : bracket.max_fcfa !== null ? formatFCFA(bracket.max_fcfa) : 'illimité'}
+      </td>
+      <td className="py-2 text-right font-mono">
+        {editing ? (
+          <input type="number" step="0.1" value={rate} onChange={(e) => setRate(e.target.value)}
+            className="w-16 bg-slate-900/60 border border-slate-700 rounded px-2 py-1 text-right text-xs" />
+        ) : `${bracket.rate_percent}%`}
+      </td>
+      {canWrite && (
+        <td className="py-2 text-right">
+          {editing ? (
+            <div className="flex items-center justify-end gap-1">
+              {error && <span className="text-red-400 text-[10px] mr-2">{error}</span>}
+              <button onClick={handleSave} disabled={saving} className="rounded bg-emerald-600 hover:bg-emerald-500 px-2 py-1 text-[10px] font-semibold text-white disabled:opacity-50">OK</button>
+              <button onClick={() => setEditing(false)} className="rounded bg-slate-800 hover:bg-slate-700 px-2 py-1 text-[10px] text-slate-400">Annuler</button>
+            </div>
+          ) : (
+            <button onClick={() => setEditing(true)} className="rounded bg-slate-800 hover:bg-slate-700 px-2 py-1 text-[10px] text-slate-400">Modifier</button>
+          )}
+        </td>
+      )}
+    </tr>
+  );
+}
+
+function PayrollTaxBracketsTab({ canWrite }: { canWrite: boolean }) {
+  const { data: cnpsData, mutate: mutateCnps } = usePayrollTaxBrackets('cnps');
+  const { data: itsData, mutate: mutateIts } = usePayrollTaxBrackets('its');
+
+  const renderTable = (brackets: PayrollTaxBracket[], onChanged: () => void) => (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-slate-500 border-b border-slate-800/60">
+            <th className="text-left py-2">Tranche</th>
+            <th className="text-right py-2">Min</th>
+            <th className="text-right py-2">Max</th>
+            <th className="text-right py-2">Taux</th>
+            {canWrite && <th></th>}
+          </tr>
+        </thead>
+        <tbody>
+          {brackets.map((b) => <BracketRow key={b.id} bracket={b} canWrite={canWrite} onChanged={onChanged} />)}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  return (
+    <div className="p-6 space-y-6">
+      <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-xs text-amber-300 leading-relaxed">
+        ⚠️⚠️⚠️ <strong>Taux et tranches illustratifs, non confirmés par une source officielle</strong> — à faire valider par un expert-comptable avant tout usage réel (déclarations CNPS, retenues ITS). La Côte d'Ivoire a réformé l'ITS en 2024 ; les tranches exactes post-réforme n'ont pas pu être confirmées. Ce barème est appliqué automatiquement à chaque génération de bulletin de paie — corrigez-le ici dès que vous avez une source fiable, sans attendre un déploiement.
+      </div>
+
+      <div>
+        <p className="text-[11px] text-slate-500 uppercase tracking-widest mb-3 font-[family-name:var(--font-syne)]">CNPS — retraite (part salariale)</p>
+        {cnpsData ? renderTable(cnpsData.data, () => mutateCnps()) : <Sk className="h-16" />}
+      </div>
+
+      <div>
+        <p className="text-[11px] text-slate-500 uppercase tracking-widest mb-3 font-[family-name:var(--font-syne)]">ITS — barème progressif (par part de quotient familial)</p>
+        {itsData ? renderTable(itsData.data, () => mutateIts()) : <Sk className="h-16" />}
+      </div>
+    </div>
+  );
+}
+
 export default function ComptabilitePage() {
   const { can } = usePermissions();
   const canWrite = can('comptaWrite');
@@ -573,6 +677,7 @@ export default function ComptabilitePage() {
     { id: 'states',   label: 'États financiers'  },
     { id: 'vouchers', label: 'Bons de caisse'    },
     { id: 'payroll',  label: 'Paie'              },
+    { id: 'tax-brackets', label: 'Barème CNPS/ITS' },
   ];
 
   return (
@@ -601,6 +706,7 @@ export default function ComptabilitePage() {
         {tab === 'states'   && <FinancialStatesTab />}
         {tab === 'vouchers' && <CashVouchersTab canWrite={canWrite} />}
         {tab === 'payroll'  && <PayrollTab canWrite={canWrite} />}
+        {tab === 'tax-brackets' && <PayrollTaxBracketsTab canWrite={canWrite} />}
       </div>
     </div>
   );

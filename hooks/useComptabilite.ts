@@ -181,3 +181,21 @@ export function usePayslips(params: Record<string, string> = {}) {
   const url   = `/comptabilite/payslips${query ? '?' + query : ''}`;
   return useSWR<Paginated<Payslip>>(url, (u: string) => apiFetch<Paginated<Payslip>>(u));
 }
+
+// ── Barème CNPS/ITS — voir Services/Accounting/PayrollTaxService (backend).
+// ⚠️ Valeurs de départ illustratives, à valider par un expert-comptable —
+// voir le bandeau d'avertissement affiché sur l'onglet "Barème" de /comptabilite.
+export interface PayrollTaxBracket {
+  id:            number;
+  type:          'cnps' | 'its';
+  min_fcfa:      number;
+  max_fcfa:      number | null;
+  rate_percent:  number;
+  label:         string;
+  sort_order:    number;
+}
+
+export function usePayrollTaxBrackets(type?: 'cnps' | 'its') {
+  const url = `/comptabilite/payroll-tax-brackets${type ? `?type=${type}` : ''}`;
+  return useSWR<{ data: PayrollTaxBracket[] }>(url, (u: string) => apiFetch<{ data: PayrollTaxBracket[] }>(u));
+}

@@ -196,6 +196,7 @@ export function FormCreateEmployee({ onSuccess }: HrFormsProps) {
     contract_type: '',
     contract_end_date: '',
     base_salary_fcfa: '',
+    parts_fiscales: '',
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -214,6 +215,7 @@ export function FormCreateEmployee({ onSuccess }: HrFormsProps) {
           contract_type: form.contract_type || null,
           contract_end_date: form.contract_end_date || null,
           base_salary_fcfa: form.base_salary_fcfa ? Number(form.base_salary_fcfa) : null,
+          parts_fiscales: form.parts_fiscales ? Number(form.parts_fiscales) : null,
         }),
       } as RequestInit);
       setCreated({ name: result.user.name, email: result.user.email, generated_password: result.generated_password });
@@ -291,6 +293,9 @@ export function FormCreateEmployee({ onSuccess }: HrFormsProps) {
           <input type="number" className="input" value={form.base_salary_fcfa} onChange={(e) => setForm({ ...form, base_salary_fcfa: e.target.value })} />
         </Field>
       </div>
+      <Field label="Parts fiscales (ITS)" description="Quotient familial — 1 = célibataire sans enfant (défaut). Sert au calcul automatique de l'ITS.">
+        <input type="number" step="0.5" min="1" className="input" value={form.parts_fiscales} onChange={(e) => setForm({ ...form, parts_fiscales: e.target.value })} placeholder="1" />
+      </Field>
       <button type="submit" disabled={loading} className="w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
         {loading ? 'Création...' : 'Créer le compte'}
       </button>
