@@ -21,6 +21,14 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Page d'accueil publique (achat billet, suivi colis, mes achats, lien connexion)
+  // — accessible à tous, connecté ou non (contrairement à /login, pas de redirect
+  // automatique si déjà connecté : un gestionnaire peut aussi vouloir juste
+  // consulter le tableau des départs sans rouvrir sa session).
+  if (pathname === '/') {
+    return NextResponse.next();
+  }
+
   // Écran public "Départs / Arrivées" (panneau de gare) — accessible sans
   // compte, quel que soit le token présent ou non (pas de redirection).
   if (pathname === '/board' || pathname.startsWith('/board/')) {
