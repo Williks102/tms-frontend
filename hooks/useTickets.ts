@@ -11,9 +11,12 @@ export interface Ticket {
   destination_stop_id:  number | null;
   passenger_name:       string;
   passenger_phone:      string | null;
+  passenger_email:      string | null;
   seat_number:          string | null;
   channel:              'physical' | 'online';
   payment_method:       'cash' | 'mobile_money' | 'card' | 'online';
+  payment_channel:      string | null;
+  payment_confirmed_at: string | null;
   price_fcfa:           number;
   status:               'pending' | 'paid' | 'boarded' | 'cancelled' | 'refunded';
   purchased_at:         string;

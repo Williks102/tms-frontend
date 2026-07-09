@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { usePublicRoutes, usePublicDepartures } from '@/hooks/usePublicTickets';
+import { usePublicRoutes, usePublicDepartures, PAYMENT_CHANNELS } from '@/hooks/usePublicTickets';
 import { apiFetchPublic, formatFCFA, PublicRoute } from '@/lib/api';
 import { Field } from '@/components/ui/Field';
-import { PrintTicketButton } from '@/components/tickets/PrintTicketButton';
 import { Ticket } from '@/hooks/useTickets';
 
 function todayStr(): string {
@@ -31,10 +30,10 @@ export default function BilletsPage() {
   const [destinationStopId, setDestinationStopId] = useState<string>('');
   const [passengerName, setPassengerName] = useState('');
   const [passengerPhone, setPassengerPhone] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'mobile_money' | 'card' | 'online'>('mobile_money');
+  const [passengerEmail, setPassengerEmail] = useState('');
+  const [paymentChannel, setPaymentChannel] = useState<string>(PAYMENT_CHANNELS[0].value);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [purchasedTicket, setPurchasedTicket] = useState<Ticket | null>(null);
 
   const { data: departuresData, isLoading: departuresLoading } = usePublicDepartures(selectedRouteId, date);
   const departures = departuresData?.data ?? [];
@@ -47,17 +46,6 @@ export default function BilletsPage() {
   const selectedStop = selectedRoute?.stops.find(s => String(s.id) === destinationStopId) ?? null;
   const price = selectedStop?.fare_from_origin ?? selectedRoute?.base_fare ?? 0;
 
-  const resetFlow = () => {
-    setSelectedRouteId(null);
-    setSelectedDepartureId(null);
-    setDestinationStopId('');
-    setPassengerName('');
-    setPassengerPhone('');
-    setPaymentMethod('mobile_money');
-    setError(null);
-    setPurchasedTicket(null);
-  };
-
   const handleSelectRoute = (routeId: number) => {
     setSelectedRouteId(routeId);
     setSelectedDepartureId(null);
@@ -65,65 +53,33 @@ export default function BilletsPage() {
   };
 
   const handleSubmit = async () => {
-    if (!selectedDepartureId || !passengerName.trim() || !passengerPhone.trim()) return;
+    if (!selectedDepartureId || !passengerName.trim() || !passengerPhone.trim() || !passengerEmail.trim()) return;
     setSubmitting(true);
     setError(null);
     try {
       // Le prix n'est jamais envoyé par le client — toujours recalculé côté
       // serveur depuis route.base_fare / route_stops.fare_from_origin, pour
       // qu'un visiteur ne puisse pas falsifier le tarif à l'achat.
-      const result = await apiFetchPublic<{ ticket: Ticket }>('/tickets/online', {
+      const result = await apiFetchPublic<{ ticket: Ticket; payment_url: string }>('/tickets/online', {
         method: 'POST',
         body: JSON.stringify({
           departure_id: selectedDepartureId,
           destination_stop_id: destinationStopId ? Number(destinationStopId) : null,
           passenger_name: passengerName,
           passenger_phone: passengerPhone,
-          payment_method: paymentMethod,
+          passenger_email: passengerEmail,
+          payment_channel: paymentChannel,
         }),
       });
-      setPurchasedTicket(result.ticket);
+      // Quitte l'app pour la page de paiement hébergée PaiementPro — la
+      // confirmation se fait ensuite sur /billets/retour (voir returnURL
+      // côté backend, PaiementProService::initPayment()).
+      window.location.href = result.payment_url;
     } catch (err: any) {
       setError(err.message || 'Erreur lors de l\'achat');
-    } finally {
       setSubmitting(false);
     }
   };
-
-  // ── Confirmation ──────────────────────────────────────────────────────
-  if (purchasedTicket) {
-    return (
-      <div className="min-h-screen bg-[#060A14] flex items-center justify-center p-6">
-        <div className="w-full max-w-md bg-[#080D1A] border border-emerald-500/20 rounded-2xl p-6 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-2xl mx-auto mb-4">
-            ✓
-          </div>
-          <h1 className="text-lg font-bold text-white font-[family-name:var(--font-syne)] mb-1">
-            Billet confirmé
-          </h1>
-          <p className="text-sm text-slate-400 mb-1">
-            Référence <span className="font-[family-name:var(--font-mono)] text-emerald-400">{purchasedTicket.reference}</span>
-          </p>
-          <p className="text-xs text-slate-600 mb-6">
-            {purchasedTicket.departure?.route.name} · {purchasedTicket.departure && formatTime(purchasedTicket.departure.departure_datetime)}
-          </p>
-          <div className="flex flex-col gap-2">
-            <PrintTicketButton
-              ticket={purchasedTicket}
-              label="🖨 Imprimer / enregistrer mon billet"
-              className="w-full rounded-lg bg-blue-600 hover:bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white"
-            />
-            <button
-              onClick={resetFlow}
-              className="w-full rounded-lg bg-slate-800 hover:bg-slate-700 px-4 py-2.5 text-sm font-semibold text-slate-300"
-            >
-              Acheter un autre billet
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // ── Flux d'achat ──────────────────────────────────────────────────────
   return (
@@ -238,12 +194,26 @@ export default function BilletsPage() {
             <Field label="Téléphone" description="Pour la confirmation de votre billet">
               <input className="input" placeholder="+225 07 00 00 00 00" value={passengerPhone} onChange={(e) => setPassengerPhone(e.target.value)} />
             </Field>
+            <Field label="Email" description="Pour le paiement en ligne">
+              <input type="email" className="input" placeholder="vous@exemple.com" value={passengerEmail} onChange={(e) => setPassengerEmail(e.target.value)} />
+            </Field>
             <Field label="Moyen de paiement">
-              <select className="input" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as typeof paymentMethod)}>
-                <option value="mobile_money">Mobile Money</option>
-                <option value="card">Carte bancaire</option>
-                <option value="online">Paiement en ligne</option>
-              </select>
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                {PAYMENT_CHANNELS.map((c) => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    onClick={() => setPaymentChannel(c.value)}
+                    className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-2.5 text-center transition-all
+                      ${paymentChannel === c.value
+                        ? 'bg-blue-500/10 border-blue-500/30'
+                        : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'}`}
+                  >
+                    <span className="text-lg">{c.icon}</span>
+                    <span className="text-[10px] text-slate-400 leading-tight">{c.label}</span>
+                  </button>
+                ))}
+              </div>
             </Field>
 
             <div className="flex items-center justify-between pt-2 border-t border-slate-800/60">
@@ -253,10 +223,10 @@ export default function BilletsPage() {
 
             <button
               onClick={handleSubmit}
-              disabled={submitting || !passengerName.trim() || !passengerPhone.trim()}
+              disabled={submitting || !passengerName.trim() || !passengerPhone.trim() || !passengerEmail.trim()}
               className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
             >
-              {submitting ? 'Paiement en cours...' : `Payer ${formatFCFA(price)}`}
+              {submitting ? 'Redirection vers le paiement...' : `Payer ${formatFCFA(price)}`}
             </button>
           </section>
         )}
