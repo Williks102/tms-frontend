@@ -12,6 +12,8 @@ import {
 } from '@/components/comptabilite/ComptabiliteForms';
 import { PrintVoucherButton } from '@/components/comptabilite/PrintVoucherButton';
 import { PrintPayslipButton } from '@/components/comptabilite/PrintPayslipButton';
+import { PrintReportButton } from '@/components/exports/PrintReportButton';
+import { ExportCsvButton } from '@/components/ui/ExportCsvButton';
 import { apiFetch } from '@/lib/api';
 import { usePermissions } from '@/lib/permissions';
 
@@ -175,8 +177,11 @@ function BalanceTab() {
 
   return (
     <div className="p-6 space-y-4">
-      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border ${data.is_balanced ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
-        {data.is_balanced ? '✓ Balance équilibrée' : '✕ Balance déséquilibrée'} — débit {formatFCFA(data.total_debit)} / crédit {formatFCFA(data.total_credit)}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border ${data.is_balanced ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+          {data.is_balanced ? '✓ Balance équilibrée' : '✕ Balance déséquilibrée'} — débit {formatFCFA(data.total_debit)} / crédit {formatFCFA(data.total_credit)}
+        </div>
+        <ExportCsvButton endpoint="/comptabilite/balance/export" fallbackFilename="balance.csv" />
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
@@ -214,6 +219,17 @@ function FinancialStatesTab() {
       <Panel title={`Compte de résultat — ${income ? `${formatDate(income.from)} au ${formatDate(income.to)}` : ''}`}>
         {incomeLoading || !income ? <Sk className="h-32" /> : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <PrintReportButton
+                title="Compte de résultat"
+                subtitle={`${formatDate(income.from)} au ${formatDate(income.to)}`}
+                sections={[
+                  { heading: 'Charges (classe 6)', rows: income.charges.lines.map((l) => ({ label: accountLabel(l.account), value: l.montant })), total: { label: 'Total charges', value: income.charges.total } },
+                  { heading: 'Produits (classe 7)', rows: income.produits.lines.map((l) => ({ label: accountLabel(l.account), value: l.montant })), total: { label: 'Total produits', value: income.produits.total } },
+                ]}
+                grandTotal={{ label: 'Résultat net', value: income.resultat_net }}
+              />
+            </div>
             <div>
               <p className="text-[11px] text-slate-500 mb-2">Charges (classe 6)</p>
               <div className="space-y-1">
@@ -251,6 +267,17 @@ function FinancialStatesTab() {
         </p>
         {bilanLoading || !bilan ? <Sk className="h-32" /> : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <PrintReportButton
+                title="Bilan simplifié"
+                subtitle="Trésorerie et tiers uniquement — pas d'immobilisations ni d'amortissements"
+                sections={[
+                  { heading: 'Trésorerie (classe 5)', rows: bilan.tresorerie.map((l) => ({ label: accountLabel(l.account), value: l.solde })) },
+                  { heading: 'Tiers (classe 4)', rows: bilan.tiers.map((l) => ({ label: accountLabel(l.account), value: l.solde })) },
+                ]}
+                grandTotal={{ label: "Résultat de l'exercice", value: bilan.resultat_net }}
+              />
+            </div>
             <div>
               <p className="text-[11px] text-slate-500 mb-2">Trésorerie (classe 5)</p>
               <div className="space-y-1">

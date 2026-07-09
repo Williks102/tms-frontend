@@ -103,3 +103,16 @@ export function useConsumptionStats() {
     { revalidateOnFocus: false }
   );
 }
+
+export interface ConsumptionLogsResponse {
+  data:         ConsumptionLog[];
+  current_page: number;
+  last_page:    number;
+  total:        number;
+}
+
+export function useConsumptionLogs(params: Record<string, string> = {}) {
+  const query = new URLSearchParams(params).toString();
+  const url   = `/fuel/consumption${query ? '?' + query : ''}`;
+  return useSWR<ConsumptionLogsResponse>(url, (u: string) => apiFetch<ConsumptionLogsResponse>(u));
+}

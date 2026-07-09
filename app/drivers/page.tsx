@@ -7,6 +7,7 @@ import {
 } from '@/hooks/useDrivers';
 import { FormChangeDriverStatus, FormCreateDriver, FormUploadDriverDocument } from '@/components/drivers/DriverForms';
 import { usePermissions } from '@/lib/permissions';
+import { ExportCsvButton } from '@/components/ui/ExportCsvButton';
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
@@ -411,7 +412,7 @@ export default function DriversPage() {
       </header>
 
       <div className="border-b border-slate-800/60 bg-[#080D1A] p-4">
-        <div className="mb-3 flex flex-wrap gap-2">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
           {(['create','document','status'] as const)
             .filter(action => action === 'document' ? canDocuments : canWrite)
             .map((action) => (
@@ -419,6 +420,7 @@ export default function DriversPage() {
               {action === 'create' ? 'Créer chauffeur' : action === 'document' ? 'Ajouter document' : 'Changer statut'}
             </button>
           ))}
+          <ExportCsvButton endpoint="/drivers/export" fallbackFilename="chauffeurs.csv" label="⬇ Exporter" className="ml-auto rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-[11px] font-semibold text-slate-300" />
         </div>
         {actionView === 'create' && <FormCreateDriver onSuccess={() => setActionView(null)} />}
         {actionView === 'document' && selectedId && <FormUploadDriverDocument driverId={selectedId} onSuccess={() => setActionView(null)} />}

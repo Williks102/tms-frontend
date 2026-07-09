@@ -164,3 +164,67 @@ export function FormEditVehicle({ vehicle, onSuccess }: { vehicle: Vehicle; onSu
     </form>
   );
 }
+
+// Copie du pattern FormUploadDriverDocument (components/drivers/DriverForms.tsx)
+export function FormUploadVehicleDocument({ vehicleId, onSuccess }: { vehicleId: number; onSuccess?: () => void }) {
+  const [type, setType] = useState('assurance');
+  const [expiresAt, setExpiresAt] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file) {
+      setMessage('Sélectionnez un fichier');
+      return;
+    }
+    setLoading(true);
+    setMessage(null);
+    try {
+      const body = new FormData();
+      body.set('type', type);
+      body.set('file', file);
+      if (expiresAt) body.set('expires_at', expiresAt);
+
+      await apiFetch(`/vehicles/${vehicleId}/documents`, {
+        method: 'POST',
+        body,
+      } as RequestInit);
+      setMessage('Document envoyé');
+      onSuccess?.();
+    } catch (err: any) {
+      setMessage(err.message || 'Erreur');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {message && <p className="text-xs text-emerald-400">{message}</p>}
+      <Field label="Type de document">
+        <select className="input" value={type} onChange={(e) => setType(e.target.value)}>
+          <option value="assurance">Assurance</option>
+          <option value="controle_technique">Contrôle technique</option>
+          <option value="vignette">Vignette</option>
+          <option value="other">Autre</option>
+        </select>
+      </Field>
+      <Field label="Fichier" description="PDF, JPG ou PNG — 5 Mo maximum">
+        <input
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png"
+          className="input"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        />
+      </Field>
+      <Field label="Date d'expiration" description="Assurance/contrôle technique : bloque le véhicule pour de nouveaux départs une fois dépassée">
+        <input type="date" className="input" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+      </Field>
+      <button type="submit" disabled={loading} className="w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white">
+        {loading ? 'Envoi...' : 'Enregistrer le document'}
+      </button>
+    </form>
+  );
+}

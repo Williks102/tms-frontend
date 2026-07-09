@@ -6,6 +6,7 @@ import { useMyLeaves, LeaveRequest } from '@/hooks/useHr';
 import { FormRequestMyLeave } from '@/components/hr/HrForms';
 import { formatFCFA, timeAgo, LiveDeparture, Alert } from '@/lib/api';
 import { KpiCard, AlertBadge, StatusDot, SectionTitle, LiveDot } from '@/components/dashboard/ui';
+import { PrintReportButton } from '@/components/exports/PrintReportButton';
 
 const LEAVE_TYPE_LABEL: Record<string, string> = {
   conge_paye: 'Congé payé', maladie: 'Maladie', sans_solde: 'Sans solde', autre: 'Autre',
@@ -260,6 +261,39 @@ export default function DashboardPage() {
                 {live?.alerts.critical} CRITIQUE{(live?.alerts.critical ?? 0) > 1 ? 'S' : ''}
               </span>
             </div>
+          )}
+          {!isLoading && !error && live && (
+            <PrintReportButton
+              title="Rapport journalier"
+              subtitle={new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              sections={[
+                {
+                  heading: 'Flotte & chauffeurs',
+                  rows: [
+                    { label: 'Bus en route',      value: live.fleet.on_trip },
+                    { label: 'Bus en embarquement', value: live.fleet.boarding },
+                    { label: 'Bus au garage',      value: live.fleet.available },
+                    { label: 'Bus en maintenance', value: live.fleet.maintenance },
+                    { label: 'Chauffeurs en service', value: live.drivers.on_duty },
+                  ],
+                },
+                {
+                  heading: 'Finance du jour',
+                  rows: [
+                    { label: 'Revenus estimés',  value: live.finance.revenue_today_fcfa },
+                    { label: 'Recette réelle (billets vendus)', value: live.finance.revenue_real_today_fcfa },
+                    { label: 'Coût carburant',   value: live.finance.fuel_cost_today_fcfa },
+                  ],
+                  total: { label: 'Bénéfice net estimé', value: live.finance.revenue_today_fcfa - live.finance.fuel_cost_today_fcfa },
+                },
+                ...(rentabilite ? [{
+                  heading: 'Rentabilité par ligne',
+                  rows: rentabilite.lines.map(l => ({ label: l.route_name, value: l.net_profit_fcfa })),
+                }] : []),
+              ]}
+              grandTotal={rentabilite ? { label: 'Résultat net du jour (rentabilité)', value: rentabilite.totals.net_profit_fcfa } : undefined}
+              className="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-[11px] font-semibold text-slate-300"
+            />
           )}
           <LiveDot lastUpdate={live?.generated_at} />
         </div>

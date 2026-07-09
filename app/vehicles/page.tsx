@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from 'react';
 import { useVehicles, useVehicleDetail, Vehicle } from '@/hooks/useVehicles';
-import { FormCreateVehicle, FormEditVehicle } from '@/components/vehicles/VehicleForms';
+import { FormCreateVehicle, FormEditVehicle, FormUploadVehicleDocument } from '@/components/vehicles/VehicleForms';
 import { usePermissions } from '@/lib/permissions';
+import { ExportCsvButton } from '@/components/ui/ExportCsvButton';
 
 function formatFCFA(n: number): string {
   return new Intl.NumberFormat('fr-FR').format(Math.round(n)) + ' F';
@@ -60,8 +61,9 @@ function VehicleCard({ vehicle, selected, onClick }: { vehicle: Vehicle; selecte
 }
 
 function VehiclePanel({ vehicleId, canWrite, onEdit }: { vehicleId: number; canWrite: boolean; onEdit: (v: Vehicle) => void }) {
-  const { data, isLoading } = useVehicleDetail(vehicleId);
+  const { data, isLoading, mutate } = useVehicleDetail(vehicleId);
   const [tab, setTab] = useState<'overview' | 'maintenance' | 'incidents' | 'fuel'>('overview');
+  const [showDocForm, setShowDocForm] = useState(false);
 
   if (isLoading) return <div className="p-6 space-y-4"><Sk className="h-32" /><Sk className="h-48" /></div>;
   if (!data) return null;
@@ -87,12 +89,43 @@ function VehiclePanel({ vehicleId, canWrite, onEdit }: { vehicleId: number; canW
             </div>
           </div>
           {canWrite && (
-            <button onClick={() => onEdit(vehicle)} className="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 flex-shrink-0">
-              Modifier
-            </button>
+            <div className="flex gap-2 flex-shrink-0">
+              <button onClick={() => setShowDocForm(true)} className="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300">
+                Documents
+              </button>
+              <button onClick={() => onEdit(vehicle)} className="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300">
+                Modifier
+              </button>
+            </div>
           )}
         </div>
+        {(vehicle.insurance_expires_at || vehicle.controle_technique_expires_at) && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {vehicle.insurance_expires_at && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full border ${new Date(vehicle.insurance_expires_at) < new Date() ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                Assurance: {formatDate(vehicle.insurance_expires_at)}
+              </span>
+            )}
+            {vehicle.controle_technique_expires_at && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full border ${new Date(vehicle.controle_technique_expires_at) < new Date() ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                Contrôle technique: {formatDate(vehicle.controle_technique_expires_at)}
+              </span>
+            )}
+          </div>
+        )}
       </div>
+
+      {showDocForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-[#080D1A] p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-white">Ajouter un document — {vehicle.plate_number}</h3>
+              <button onClick={() => setShowDocForm(false)} className="text-sm text-slate-400">✕</button>
+            </div>
+            <FormUploadVehicleDocument vehicleId={vehicle.id} onSuccess={() => { setShowDocForm(false); mutate(); }} />
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-1 px-4 sm:px-6 pt-4 border-b border-slate-800/40">
         {[
@@ -277,13 +310,14 @@ export default function VehiclesPage() {
         </div>
       </header>
 
-      {canWrite && (
-        <div className="border-b border-slate-800/60 bg-[#080D1A] p-4">
+      <div className="border-b border-slate-800/60 bg-[#080D1A] p-4 flex flex-wrap items-center gap-2">
+        {canWrite && (
           <button onClick={() => setShowCreate(true)} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white">
             + Nouveau véhicule
           </button>
-        </div>
-      )}
+        )}
+        <ExportCsvButton endpoint="/vehicles/export" fallbackFilename="vehicules.csv" label="⬇ Exporter" className="ml-auto rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-[11px] font-semibold text-slate-300" />
+      </div>
 
       <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-3.5rem)]">
         <div className={`${mobileShowList ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-80 flex-shrink-0 border-r border-slate-800/60 bg-[#080D1A]`}>

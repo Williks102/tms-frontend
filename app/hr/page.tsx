@@ -7,6 +7,7 @@ import {
   Employee, LeaveRequest, DisciplinaryRecord, EmployableType,
 } from '@/hooks/useHr';
 import { FormRequestLeave, FormDecideLeave, FormCreateDisciplinaryRecord, FormCreateEmployee, FormImportEmployeesCsv } from '@/components/hr/HrForms';
+import { ExportCsvButton } from '@/components/ui/ExportCsvButton';
 import { usePermissions } from '@/lib/permissions';
 
 type Tab = 'dashboard' | 'employees' | 'leaves' | 'disciplinary';
@@ -279,6 +280,7 @@ function EmployeesTab({ canManage }: { canManage: boolean }) {
                 className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-1.5 text-[11px] font-semibold text-indigo-400">
                 + Import CSV
               </button>
+              <ExportCsvButton endpoint="/hr/employees/export" fallbackFilename="personnel.csv" label="⬇ Exporter" className="rounded-lg bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-[11px] font-semibold text-slate-300" />
             </div>
           )}
           <input type="text" placeholder="Rechercher..." value={search} onChange={e => setSearch(e.target.value)}

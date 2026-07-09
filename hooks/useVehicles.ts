@@ -16,6 +16,8 @@ export interface Vehicle {
   status:                      'available' | 'on_trip' | 'boarding' | 'maintenance' | 'inactive';
   notes:                       string | null;
   cargo_capacity_kg:           number | null;
+  insurance_expires_at:          string | null;
+  controle_technique_expires_at: string | null;
 }
 
 export interface MaintenancePlanSummary {

@@ -3,6 +3,8 @@
 
 import useSWR from 'swr';
 import { apiFetch } from '@/lib/api';
+import { MonthlyScore } from './useDrivers';
+import { Payslip } from './useComptabilite';
 
 export interface MyDeparture {
   id:                  number;
@@ -28,4 +30,16 @@ export async function markMyDepartureStatus(departureId: number, status: 'depart
     method: 'PATCH',
     body: JSON.stringify({ status, [key]: new Date().toISOString() }),
   } as RequestInit);
+}
+
+export function useMyScores() {
+  return useSWR<{ data: MonthlyScore[] }>('/drivers/mine/scores', apiFetch, {
+    revalidateOnFocus: false,
+  });
+}
+
+export function useMyPayslips() {
+  return useSWR<{ data: Payslip[] }>('/comptabilite/payslips/mine', apiFetch, {
+    revalidateOnFocus: false,
+  });
 }

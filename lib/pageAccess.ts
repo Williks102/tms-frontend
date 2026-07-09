@@ -24,6 +24,8 @@ export const PAGE_ACCESS: Record<string, Role[]> = {
   '/controle':      ['manager', 'controleur'],
   '/comptabilite':  ['manager', 'rh', 'comptable'],
   '/colis':         ['manager', 'agent_colis'],
+  '/audit':         ['manager', 'dg'],
+  '/mes-saisies':   ['manager', 'dispatcher'],
 };
 
 // Page de repli sûre pour tous les rôles — sert de cible de redirection par défaut.

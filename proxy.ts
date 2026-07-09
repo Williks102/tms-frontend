@@ -37,6 +37,11 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Compte client léger (mes billets/colis par téléphone) — accessible sans compte, comme /board.
+  if (pathname === '/mes-achats' || pathname.startsWith('/mes-achats/')) {
+    return NextResponse.next();
+  }
+
   // Pages protégées — token obligatoire
   if (!token) {
     return NextResponse.redirect(new URL('/login', request.url));

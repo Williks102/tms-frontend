@@ -1,11 +1,25 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useMyTodaySchedule, markMyDepartureStatus, MyDeparture } from '@/hooks/useDriverSelf';
+import { useMyTodaySchedule, markMyDepartureStatus, MyDeparture, useMyScores, useMyPayslips } from '@/hooks/useDriverSelf';
 import { useMyLeaves, LeaveRequest } from '@/hooks/useHr';
 import { FormRequestMyLeave } from '@/components/hr/HrForms';
 import { FormReportMyIncident } from '@/components/driver/DriverForms';
+import { PrintPayslipButton } from '@/components/comptabilite/PrintPayslipButton';
 import { getUser } from '@/lib/auth';
+
+function formatFCFA(n: number): string {
+  return new Intl.NumberFormat('fr-FR').format(Math.round(n)) + ' FCFA';
+}
+
+function formatMonth(period: string): string {
+  return new Date(period).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+}
+
+const PAYSLIP_STATUS_CFG: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  validated: { label: 'Validé', color: 'text-blue-400',    bg: 'bg-blue-500/10',    border: 'border-blue-500/20'    },
+  paid:      { label: 'Payé',   color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+};
 
 const LEAVE_TYPE_LABEL: Record<string, string> = {
   conge_paye: 'Congé payé', maladie: 'Maladie', sans_solde: 'Sans solde', autre: 'Autre',
@@ -89,6 +103,11 @@ export default function DriverPage() {
   const departures = data?.data ?? [];
   const leaves = leavesData?.data ?? [];
 
+  const { data: scoresData, isLoading: scoresLoading } = useMyScores();
+  const { data: payslipsData, isLoading: payslipsLoading } = useMyPayslips();
+  const scores = scoresData?.data ?? [];
+  const payslips = payslipsData?.data ?? [];
+
   return (
     <div className="min-h-screen bg-[#060A14]">
       <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-4 sm:px-6">
@@ -151,6 +170,59 @@ export default function DriverPage() {
                   <span key={l.id} className={`inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border ${cfg.bg} ${cfg.color} ${cfg.border}`}>
                     {LEAVE_TYPE_LABEL[l.type]} · {formatShortDate(l.start_date)}–{formatShortDate(l.end_date)} · {cfg.label}
                   </span>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Mes scores */}
+        <div className="bg-[#0A1020] border border-slate-800/60 rounded-xl p-4">
+          <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-3 font-[family-name:var(--font-syne)]">Mes scores mensuels</p>
+          {scoresLoading ? (
+            <Sk className="h-16" />
+          ) : !scores.length ? (
+            <p className="text-slate-600 text-xs">Aucun score enregistré pour l'instant</p>
+          ) : (
+            <div className="space-y-2">
+              {scores.map(s => (
+                <div key={s.id} className="flex items-center justify-between text-xs bg-slate-900/40 rounded-lg px-3 py-2">
+                  <span className="text-slate-400 font-[family-name:var(--font-syne)] capitalize">{formatMonth(s.month)}</span>
+                  <div className="flex items-center gap-4 font-[family-name:var(--font-mono)]">
+                    <span className="text-slate-500">{s.trips_count} trajet{s.trips_count > 1 ? 's' : ''}</span>
+                    <span className={`font-bold ${s.avg_eco_score !== null && s.avg_eco_score >= 70 ? 'text-emerald-400' : s.avg_eco_score !== null && s.avg_eco_score >= 40 ? 'text-amber-400' : 'text-red-400'}`}>
+                      {s.avg_eco_score !== null ? `${Math.round(s.avg_eco_score)}/100` : '—'}
+                    </span>
+                    {s.rank && <span className="text-purple-400">#{s.rank}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Mes bulletins de paie */}
+        <div className="bg-[#0A1020] border border-slate-800/60 rounded-xl p-4">
+          <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-3 font-[family-name:var(--font-syne)]">Mes bulletins de paie</p>
+          {payslipsLoading ? (
+            <Sk className="h-16" />
+          ) : !payslips.length ? (
+            <p className="text-slate-600 text-xs">Aucun bulletin validé pour l'instant</p>
+          ) : (
+            <div className="space-y-2">
+              {payslips.map(p => {
+                const cfg = PAYSLIP_STATUS_CFG[p.status] ?? PAYSLIP_STATUS_CFG.validated;
+                return (
+                  <div key={p.id} className="flex items-center justify-between text-xs bg-slate-900/40 rounded-lg px-3 py-2">
+                    <div>
+                      <span className="text-slate-300 font-[family-name:var(--font-syne)] capitalize">{formatMonth(p.period)}</span>
+                      <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold ${cfg.bg} ${cfg.color} ${cfg.border}`}>{cfg.label}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-emerald-400 font-[family-name:var(--font-mono)] font-bold">{formatFCFA(p.net_amount_fcfa)}</span>
+                      <PrintPayslipButton payslip={p} label="🖨" className="rounded-lg bg-slate-800 hover:bg-slate-700 px-2 py-1 text-[11px] text-slate-300" />
+                    </div>
+                  </div>
                 );
               })}
             </div>

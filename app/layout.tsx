@@ -39,6 +39,8 @@ async function Sidebar() {
     { href: '/hr',            icon: '🧑‍💼', label: 'RH'           },
     { href: '/comptabilite',  icon: '📊', label: 'Comptabilité' },
     { href: '/colis',         icon: '📦', label: 'Colis'        },
+    { href: '/audit',         icon: '🛡️', label: 'Audit'        },
+    { href: '/mes-saisies',   icon: '📝', label: 'Mes saisies'  },
     { href: '/driver',        icon: '🚐', label: 'Mon espace'   },
     { href: '/caisse',        icon: '💰', label: 'Ma caisse'    },
     { href: '/controle',      icon: '📷', label: 'Contrôle'     },
@@ -83,17 +85,19 @@ async function Sidebar() {
         ))}
       </nav>
 
-      {/* Footer sidebar avec logout */}
-      <div className="p-3 border-t border-slate-800/60">
+      {/* Footer sidebar avec notifications + logout */}
+      <div className="p-3 border-t border-slate-800/60 space-y-2">
+        <NotificationBell />
         <LogoutButton />
       </div>
     </aside>
   );
 }
 
-// ── Bouton logout (Client Component) ──────────────────────────────────────
-// Séparé pour pouvoir utiliser 'use client' sans contaminer le layout entier
+// ── Composants clients (bell + logout) ──────────────────────────────────────
+// Séparés pour pouvoir utiliser 'use client' sans contaminer le layout entier
 import LogoutButton from '@/components/LogoutButton';
+import NotificationBell from '@/components/notifications/NotificationBell';
 import AppShell from '@/components/AppShell';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
