@@ -8,16 +8,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { canAccessPage, isKnownRole, landingPageFor } from '@/lib/pageAccess';
 
 export function proxy(request: NextRequest) {
-  const token    = request.cookies.get('tms_token')?.value;
-  const roleRaw  = request.cookies.get('tms_role')?.value;
-  const role     = isKnownRole(roleRaw) ? roleRaw : undefined;
-  const pathname = request.nextUrl.pathname;
-  const landing  = landingPageFor(role);
+  // Sanctum SPA (cookie httpOnly, voir correctif.md point 4) : le cookie de
+  // session n'est plus lisible ici (httpOnly, chiffré par Laravel) — la
+  // présence d'un rôle connu sert de signal "connecté", exactement comme
+  // avant (ce cookie n'a jamais été l'autorité de sécurité, seulement un
+  // routeur UX ; l'API vérifie le rôle elle-même sur chaque route protégée).
+  const roleRaw    = request.cookies.get('tms_role')?.value;
+  const role       = isKnownRole(roleRaw) ? roleRaw : undefined;
+  const isLoggedIn = !!role;
+  const pathname   = request.nextUrl.pathname;
+  const landing    = landingPageFor(role);
 
   // Pages publiques — pas de redirection
   if (pathname === '/login') {
     // Si déjà connecté → redirect vers SA page d'atterrissage (pas forcément /dashboard)
-    if (token) return NextResponse.redirect(new URL(landing, request.url));
+    if (isLoggedIn) return NextResponse.redirect(new URL(landing, request.url));
     return NextResponse.next();
   }
 
@@ -50,8 +55,8 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Pages protégées — token obligatoire
-  if (!token) {
+  // Pages protégées — connexion obligatoire
+  if (!isLoggedIn) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 

@@ -1,18 +1,12 @@
-// lib/api.ts — version finale avec token dynamique
+// lib/api.ts — Sanctum SPA (cookie httpOnly, voir correctif.md point 4)
 import { logout } from './auth';
+import { withCsrfHeader } from './csrf';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
-function getToken(): string {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem('tms_token') || '';
-}
-
-export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = getToken();
-
+async function buildRequest(endpoint: string, options: RequestInit): Promise<{ url: string; init: RequestInit }> {
+  const method = (options.method ?? 'GET').toString();
   const headers = new Headers(options.headers || {});
-  headers.set('Authorization', `Bearer ${token}`);
   headers.set('Accept', 'application/json');
   // Ne pas forcer application/json sur un FormData (upload de fichier) — le
   // navigateur doit fixer lui-même le Content-Type avec la boundary multipart.
@@ -20,84 +14,72 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
     headers.set('Content-Type', 'application/json');
   }
 
-  const res = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-    cache: 'no-store',
-  });
+  await withCsrfHeader(headers, method);
 
-  if (res.status === 401) {
-    // Token expiré → déconnexion complète (localStorage ET cookies, voir
-    // logout() dans lib/auth.ts). Sans le nettoyage des cookies, le cookie
-    // tms_token restait valide aux yeux de proxy.ts après ce redirect vers
-    // /login, qui rebondissait aussitôt vers la page d'atterrissage — boucle
-    // de rechargement complet qui remonte AppShell à zéro (tiroir sidebar
-    // refermé) à chaque poll SWR en arrière-plan une fois le token expiré.
+  return {
+    url: `${API_URL}${endpoint}`,
+    init: { ...options, headers, credentials: 'include', cache: 'no-store' },
+  };
+}
+
+async function parseErrorMessage(res: Response, endpoint: string): Promise<string> {
+  let errorMessage = `API error ${res.status} on ${endpoint}`;
+  try {
+    const errorData = await res.json();
+    // 422 Unprocessable Entity — validation errors
+    if (res.status === 422 && errorData.errors) {
+      const validationErrors = Object.entries(errorData.errors)
+        .map(([field, messages]: [string, any]) => {
+          const msgs = Array.isArray(messages) ? messages : [messages];
+          return `${field}: ${msgs.join(', ')}`;
+        })
+        .join(' | ');
+      errorMessage = validationErrors || errorMessage;
+    } else if (errorData.message) {
+      errorMessage = errorData.message;
+    }
+  } catch {
+    // Si la réponse n'est pas du JSON, utiliser le message générique
+  }
+  return errorMessage;
+}
+
+export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const { url, init } = await buildRequest(endpoint, options);
+  const res = await fetch(url, init);
+
+  // 401 (session absente/expirée) et 419 (jeton CSRF invalide/expiré — arrive
+  // typiquement pour la même raison, la session sous-jacente n'est plus
+  // valide) → déconnexion complète (localStorage ET cookie tms_role, voir
+  // logout() dans lib/auth.ts). Sans le nettoyage du cookie de rôle,
+  // proxy.ts croirait l'utilisateur toujours connecté et le rebondirait
+  // aussitôt vers sa page d'atterrissage — boucle de rechargement complet
+  // qui remonte AppShell à zéro à chaque poll SWR une fois la session
+  // expirée côté serveur (SESSION_LIFETIME, config/session.php).
+  if (res.status === 401 || res.status === 419) {
     logout();
     throw new Error('Non authentifié');
   }
 
   if (!res.ok) {
-    let errorMessage = `API error ${res.status} on ${endpoint}`;
-    try {
-      const errorData = await res.json();
-      // 422 Unprocessable Entity — validation errors
-      if (res.status === 422 && errorData.errors) {
-        const validationErrors = Object.entries(errorData.errors)
-          .map(([field, messages]: [string, any]) => {
-            const msgs = Array.isArray(messages) ? messages : [messages];
-            return `${field}: ${msgs.join(', ')}`;
-          })
-          .join(' | ');
-        errorMessage = validationErrors || errorMessage;
-      } else if (errorData.message) {
-        errorMessage = errorData.message;
-      }
-    } catch {
-      // Si la réponse n'est pas du JSON, utiliser le message générique
-    }
-    throw new Error(errorMessage);
+    throw new Error(await parseErrorMessage(res, endpoint));
   }
 
   return res.json();
 }
 
-// Variante sans token — pages publiques (board de gare, achat de billet en
-// ligne), pas de compte utilisateur derrière. Ne redirige jamais vers /login
-// sur erreur. Accepte les mêmes options que apiFetch (POST/body inclus) pour
-// pouvoir aussi servir aux écritures publiques (ex: achat de billet).
+// Variante sans compte utilisateur — pages publiques (board de gare, achat de
+// billet en ligne), pas de session applicative derrière. Ne redirige jamais
+// vers /login sur erreur. Envoie quand même les cookies + un jeton CSRF sur
+// les méthodes mutantes : une fois le frontend stateful, Laravel l'exige même
+// pour un visiteur anonyme (voir lib/csrf.ts) — sans ça, POST /tickets/online
+// échouerait en 419 pour tout le monde, pas seulement les comptes gestionnaires.
 export async function apiFetchPublic<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const headers = new Headers(options.headers || {});
-  headers.set('Accept', 'application/json');
-  if (!headers.has('Content-Type') && options.body && !(options.body instanceof FormData)) {
-    headers.set('Content-Type', 'application/json');
-  }
-
-  const res = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-    cache: 'no-store',
-  });
+  const { url, init } = await buildRequest(endpoint, options);
+  const res = await fetch(url, init);
 
   if (!res.ok) {
-    let errorMessage = `API error ${res.status} on ${endpoint}`;
-    try {
-      const errorData = await res.json();
-      if (res.status === 422 && errorData.errors) {
-        const validationErrors = Object.entries(errorData.errors)
-          .map(([field, messages]: [string, any]) => {
-            const msgs = Array.isArray(messages) ? messages : [messages];
-            return `${field}: ${msgs.join(', ')}`;
-          })
-          .join(' | ');
-        errorMessage = validationErrors || errorMessage;
-      } else if (errorData.message) {
-        errorMessage = errorData.message;
-      }
-    } catch {
-      // Si la réponse n'est pas du JSON, utiliser le message générique
-    }
-    throw new Error(errorMessage);
+    throw new Error(await parseErrorMessage(res, endpoint));
   }
 
   return res.json();

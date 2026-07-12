@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { getToken } from '@/lib/auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
-// Pas de lien <a href> direct (poserait le token Bearer en query string,
-// visible dans l'historique/les logs serveur) — fetch authentifié par header
-// comme partout ailleurs, puis déclenchement du téléchargement via un objet
+// Pas de lien <a href> direct (empêcherait d'envoyer le cookie de session
+// httpOnly de toute façon, et poserait un éventuel token en query string) —
+// fetch authentifié par cookie (credentials: 'include', Sanctum SPA — voir
+// correctif.md point 4) puis déclenchement du téléchargement via un objet
 // Blob et un <a> temporaire.
 export function ExportCsvButton({ endpoint, label = '⬇ Exporter CSV', fallbackFilename = 'export.csv', className }: {
   endpoint:          string;
@@ -21,7 +21,7 @@ export function ExportCsvButton({ endpoint, label = '⬇ Exporter CSV', fallback
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}${endpoint}`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
+        credentials: 'include',
       });
       if (!res.ok) throw new Error('Export échoué');
 

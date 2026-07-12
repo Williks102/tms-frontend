@@ -7,20 +7,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { landingPageFor, isKnownRole } from '@/lib/pageAccess';
+import { withCsrfHeader } from '@/lib/csrf';
+import { saveUser, saveRoleToCookie } from '@/lib/auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/v1', '') || 'http://localhost:8000/api';
-
-function saveTokenToCookie(token: string): void {
-  const expires = new Date();
-  expires.setDate(expires.getDate() + 7);
-  document.cookie = `tms_token=${token}; path=/; expires=${expires.toUTCString()}; SameSite=Lax`;
-}
-
-function saveRoleToCookie(role: string): void {
-  const expires = new Date();
-  expires.setDate(expires.getDate() + 7);
-  document.cookie = `tms_role=${role}; path=/; expires=${expires.toUTCString()}; SameSite=Lax`;
-}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -36,10 +26,19 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // Sanctum SPA (cookie httpOnly, voir correctif.md point 4) : un jeton
+      // CSRF valide est obligatoire avant ce POST, sans quoi Laravel répond
+      // 419 même avec des identifiants corrects. Ce n'est pas apiFetch/
+      // apiFetchPublic (login n'a par définition encore aucune session), mais
+      // le même helper CSRF partagé (lib/csrf.ts) est réutilisé ici.
+      const headers = new Headers({ 'Content-Type': 'application/json', Accept: 'application/json' });
+      await withCsrfHeader(headers, 'POST');
+
       const res = await fetch(`${API_URL}/login`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body:    JSON.stringify({ email, password }),
+        method:      'POST',
+        headers,
+        credentials: 'include',
+        body:        JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
@@ -50,10 +49,10 @@ export default function LoginPage() {
         return;
       }
 
-      // Sauvegarde token/rôle dans localStorage ET cookie (pour le proxy et le layout serveur)
-      localStorage.setItem('tms_token', data.token);
-      localStorage.setItem('tms_user',  JSON.stringify(data.user));
-      saveTokenToCookie(data.token);
+      // Plus de token à stocker — le cookie de session httpOnly est déjà
+      // posé par Laravel dans la réponse ci-dessus. Seules des infos
+      // d'affichage non sensibles (nom/rôle) sont gardées côté client.
+      saveUser(data.user);
       saveRoleToCookie(data.user.role);
 
       const role = isKnownRole(data.user.role) ? data.user.role : undefined;
@@ -165,44 +164,48 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Comptes test */}
-          <div className="mt-6 pt-5 border-t border-slate-800/60">
-            <p className="text-[10px] text-slate-600 uppercase tracking-widest mb-3 font-[family-name:var(--font-syne)]">
-              Comptes de test (mot de passe: password)
-            </p>
-            <div className="space-y-2">
-              {[
-                { role: 'Manager',    email: 'manager@tms-ci.com'    },
-                { role: 'Dispatcher', email: 'dispatcher@tms-ci.com' },
-                { role: 'DG',         email: 'dg@tms-ci.com'         },
-                { role: 'RH',         email: 'rh@tms-ci.com'         },
-                { role: 'Caissier',   email: 'caissier@tms-ci.com'   },
-                { role: 'Contrôleur', email: 'controleur@tms-ci.com' },
-                { role: 'Comptable',  email: 'comptable@tms-ci.com'  },
-                { role: 'Agent colis', email: 'colis@tms-ci.com'     },
-                { role: 'Chauffeur',  email: 'ch-2022-001@tms-ci.com'},
-              ].map(account => (
-                <button
-                  key={account.email}
-                  type="button"
-                  onClick={() => { setEmail(account.email); setPassword('password'); }}
-                  className="w-full flex items-center justify-between px-3 py-2.5 bg-slate-800/40 border border-slate-800 hover:border-slate-700 rounded-lg transition-all group"
-                >
-                  <div className="text-left">
-                    <p className="text-[11px] font-bold text-slate-400 group-hover:text-slate-300 font-[family-name:var(--font-syne)]">
-                      {account.role}
-                    </p>
-                    <p className="text-[10px] text-slate-600 font-[family-name:var(--font-mono)]">
-                      {account.email}
-                    </p>
-                  </div>
-                  <span className="text-[10px] text-slate-600 group-hover:text-blue-400 transition-colors">
-                    Remplir →
-                  </span>
-                </button>
-              ))}
+          {/* Comptes test — jamais en production (voir correctif.md point 8) :
+              exclu du bundle par Next.js lui-même (dead-code elimination sur
+              une condition NODE_ENV statique), pas juste masqué côté client. */}
+          {process.env.NODE_ENV !== 'production' && (
+            <div className="mt-6 pt-5 border-t border-slate-800/60">
+              <p className="text-[10px] text-slate-600 uppercase tracking-widest mb-3 font-[family-name:var(--font-syne)]">
+                Comptes de test (mot de passe: password)
+              </p>
+              <div className="space-y-2">
+                {[
+                  { role: 'Manager',    email: 'manager@tms-ci.com'    },
+                  { role: 'Dispatcher', email: 'dispatcher@tms-ci.com' },
+                  { role: 'DG',         email: 'dg@tms-ci.com'         },
+                  { role: 'RH',         email: 'rh@tms-ci.com'         },
+                  { role: 'Caissier',   email: 'caissier@tms-ci.com'   },
+                  { role: 'Contrôleur', email: 'controleur@tms-ci.com' },
+                  { role: 'Comptable',  email: 'comptable@tms-ci.com'  },
+                  { role: 'Agent colis', email: 'colis@tms-ci.com'     },
+                  { role: 'Chauffeur',  email: 'ch-2022-001@tms-ci.com'},
+                ].map(account => (
+                  <button
+                    key={account.email}
+                    type="button"
+                    onClick={() => { setEmail(account.email); setPassword('password'); }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 bg-slate-800/40 border border-slate-800 hover:border-slate-700 rounded-lg transition-all group"
+                  >
+                    <div className="text-left">
+                      <p className="text-[11px] font-bold text-slate-400 group-hover:text-slate-300 font-[family-name:var(--font-syne)]">
+                        {account.role}
+                      </p>
+                      <p className="text-[10px] text-slate-600 font-[family-name:var(--font-mono)]">
+                        {account.email}
+                      </p>
+                    </div>
+                    <span className="text-[10px] text-slate-600 group-hover:text-blue-400 transition-colors">
+                      Remplir →
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <p className="text-center text-[10px] text-slate-700 mt-5 font-[family-name:var(--font-mono)]">

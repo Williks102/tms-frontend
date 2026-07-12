@@ -1,9 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AuthUser } from '@/lib/auth';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/v1', '') || 'http://localhost:8000/api';
+import { AuthUser, getUser, logout } from '@/lib/auth';
 
 const ROLE_LABELS: Record<string, string> = {
   dg: 'DG', manager: 'Manager', dispatcher: 'Dispatcher', rh: 'RH', caissier: 'Caissier',
@@ -14,35 +12,8 @@ export default function LogoutButton() {
   const [user, setUser] = useState<AuthUser | null>(null);
 
   useEffect(() => {
-    const raw = localStorage.getItem('tms_user');
-    if (raw) {
-      try { setUser(JSON.parse(raw)); } catch {}
-    }
+    setUser(getUser());
   }, []);
-
-  const handleLogout = async () => {
-    const token = localStorage.getItem('tms_token');
-
-    // Appel API logout (optionnel — révoque le token côté Laravel)
-    if (token) {
-      try {
-        await fetch(`${API_URL}/logout`, {
-          method:  'POST',
-          headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
-        });
-      } catch {}
-    }
-
-    // Nettoyage local
-    localStorage.removeItem('tms_token');
-    localStorage.removeItem('tms_user');
-
-    // Supprime les cookies lus par le proxy et le layout serveur
-    document.cookie = 'tms_token=; path=/; max-age=0';
-    document.cookie = 'tms_role=; path=/; max-age=0';
-
-    window.location.href = '/login';
-  };
 
   return (
     <div className="flex items-center gap-2 px-2">
@@ -66,7 +37,7 @@ export default function LogoutButton() {
           </p>
         </div>
         <button
-          onClick={handleLogout}
+          onClick={() => logout()}
           title="Se déconnecter"
           className="ml-2 p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-all flex-shrink-0"
         >
