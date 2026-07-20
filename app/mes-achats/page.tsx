@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMyPurchases, MyPurchaseTicket } from '@/hooks/useMyPurchases';
 import { PublicParcelTracking } from '@/hooks/useColis';
+import { TurnstileWidget, TurnstileWidgetHandle, TURNSTILE_ENABLED } from '@/components/ui/TurnstileWidget';
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return '—';
@@ -93,13 +94,24 @@ function ParcelCard({ parcel }: { parcel: PublicParcelTracking }) {
 
 export default function MesAchatsPage() {
   const [input, setInput] = useState('');
-  const [phone, setPhone] = useState<string | null>(null);
-  const { data, error, isLoading } = useMyPurchases(phone);
+  const [token, setToken] = useState<string | null>(null);
+  const widgetRef = useRef<TurnstileWidgetHandle>(null);
+  const { data, error, isLoading, search } = useMyPurchases();
 
+  // Le CAPTCHA n'est actif que si une clé site est configurée (voir
+  // TurnstileWidget) — en dev sans compte Cloudflare, la recherche reste
+  // utilisable sans jeton, le backend applique le même repli.
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const value = input.trim();
-    if (value) setPhone(value);
+    if (!value || (TURNSTILE_ENABLED && !token)) return;
+    // Le jeton est consommé ici, atomiquement avec la recherche — jamais en
+    // réaction à un changement d'état découplé (voir piège corrigé dans
+    // TurnstileWidget.tsx). reset() récupère un nouveau jeton sur le même
+    // widget, sans le remonter.
+    search(value, token);
+    setToken(null);
+    widgetRef.current?.reset();
   };
 
   const hasResults = data && (data.tickets.length > 0 || data.parcels.length > 0);
@@ -122,14 +134,22 @@ export default function MesAchatsPage() {
             placeholder="07 00 00 00 00"
             className="flex-1 bg-slate-800/60 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2.5 placeholder-slate-600 font-[family-name:var(--font-mono)] focus:outline-none focus:border-indigo-500/50"
           />
-          <button type="submit" disabled={!input.trim()} className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+          <button type="submit" disabled={!input.trim() || (TURNSTILE_ENABLED && !token)} className="rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
             Rechercher
           </button>
         </form>
 
+        <div className="flex justify-center mb-4">
+          <TurnstileWidget ref={widgetRef} onToken={setToken} />
+        </div>
+
+        {TURNSTILE_ENABLED && !token && input.trim() && (
+          <p className="text-xs text-slate-500 text-center mb-4">Vérification de sécurité en cours…</p>
+        )}
+
         {isLoading && <p className="text-xs text-slate-500 text-center">Recherche...</p>}
-        {error && phone && (
-          <p className="text-xs text-red-400 text-center">Une erreur est survenue, réessayez.</p>
+        {error && (
+          <p className="text-xs text-red-400 text-center">{error.message || 'Une erreur est survenue, réessayez.'}</p>
         )}
         {data && !hasResults && (
           <p className="text-xs text-slate-500 text-center">Aucun billet ni colis trouvé pour ce numéro.</p>
