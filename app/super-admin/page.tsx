@@ -17,7 +17,7 @@ function formatDate(iso: string | null): string {
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-[#080D1A] border border-slate-800/60 rounded-2xl p-5 space-y-4">
+    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
       <p className="text-[10px] text-slate-500 uppercase tracking-widest font-[family-name:var(--font-syne)]">{title}</p>
       {children}
     </div>
@@ -28,7 +28,7 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between text-sm">
       <span className="text-slate-500">{label}</span>
-      <span className="text-slate-200 font-[family-name:var(--font-mono)]">{value}</span>
+      <span className="text-slate-900 font-[family-name:var(--font-mono)]">{value}</span>
     </div>
   );
 }
@@ -64,11 +64,11 @@ export default function SuperAdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#060A14]">
-      <header className="h-14 border-b border-slate-800/60 bg-[#080D1A] flex items-center px-4 sm:px-6">
+    <div className="min-h-screen bg-white">
+      <header className="h-14 border-b border-slate-200 bg-slate-50 flex items-center px-4 sm:px-6">
         <div className="min-w-0">
-          <h1 className="text-sm font-bold text-white tracking-widest uppercase font-[family-name:var(--font-syne)]">Super Admin</h1>
-          <p className="text-xs text-slate-600 truncate hidden sm:block">Abonnement et facturation de ce déploiement — usage interne uniquement</p>
+          <h1 className="text-sm font-bold text-slate-900 tracking-widest uppercase font-[family-name:var(--font-syne)]">Super Admin</h1>
+          <p className="text-xs text-slate-500 truncate hidden sm:block">Abonnement et facturation de ce déploiement — usage interne uniquement</p>
         </div>
       </header>
 
@@ -77,7 +77,7 @@ export default function SuperAdminPage() {
         {/* Statut d'abonnement */}
         <Card title="Statut d'abonnement">
           {subLoading ? (
-            <p className="text-xs text-slate-600">Chargement...</p>
+            <p className="text-xs text-slate-500">Chargement...</p>
           ) : subscription ? (
             <>
               <div className="flex items-center gap-3">
@@ -98,17 +98,17 @@ export default function SuperAdminPage() {
                 </p>
               )}
 
-              <div className="pt-3 border-t border-slate-800/60 space-y-3">
+              <div className="pt-3 border-t border-slate-200 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] text-slate-600 uppercase tracking-wider">Payé jusqu&apos;au (optionnel)</label>
+                    <label className="text-[10px] text-slate-500 uppercase tracking-wider">Payé jusqu&apos;au (optionnel)</label>
                     <input type="date" value={paidUntil} onChange={(e) => setPaidUntil(e.target.value)}
-                      className="mt-1 w-full bg-slate-900/60 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500/50" />
+                      className="mt-1 w-full bg-white border border-slate-300 text-slate-900 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500/50" />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-600 uppercase tracking-wider">Note (optionnel)</label>
+                    <label className="text-[10px] text-slate-500 uppercase tracking-wider">Note (optionnel)</label>
                     <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ex: Payé Mobile Money le 20/07"
-                      className="mt-1 w-full bg-slate-900/60 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-2 placeholder-slate-600 focus:outline-none focus:border-indigo-500/50" />
+                      className="mt-1 w-full bg-white border border-slate-300 text-slate-900 text-xs rounded-lg px-3 py-2 placeholder-slate-400 focus:outline-none focus:border-indigo-500/50" />
                   </div>
                 </div>
 
@@ -134,24 +134,24 @@ export default function SuperAdminPage() {
         {/* Rapport de facturation */}
         <Card title="Rapport de facturation">
           <input type="month" value={month} onChange={(e) => setMonth(e.target.value)}
-            className="bg-slate-900/60 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500/50" />
+            className="bg-white border border-slate-300 text-slate-900 text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500/50" />
 
           {reportLoading ? (
-            <p className="text-xs text-slate-600">Chargement...</p>
+            <p className="text-xs text-slate-500">Chargement...</p>
           ) : report ? (
             <div className="space-y-2 pt-2">
               <p className="text-xs text-slate-500 uppercase tracking-wider">{report.month_label}</p>
               <Row label="Taille de flotte" value={`${report.fleet_size} véhicule(s)`} />
               <Row label="Palier" value={report.tier.label} />
               <Row label="Abonnement mensuel" value={formatFCFA(report.tier.monthly_fcfa)} />
-              <div className="pt-2 border-t border-slate-800/60 space-y-2">
+              <div className="pt-2 border-t border-slate-200 space-y-2">
                 <Row label="Billets en ligne vendus" value={report.online_tickets_count} />
                 <Row label="Volume billets en ligne" value={formatFCFA(report.online_volume_fcfa)} />
                 <Row label={`Commission (${report.commission_per_ticket_fcfa} FCFA/billet)`} value={formatFCFA(report.commission_fcfa)} />
               </div>
-              <div className="pt-2 border-t border-slate-800/60">
+              <div className="pt-2 border-t border-slate-200">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-white">Total à facturer</span>
+                  <span className="text-sm font-bold text-slate-900">Total à facturer</span>
                   <span className="text-lg font-bold text-emerald-400 font-[family-name:var(--font-mono)]">{formatFCFA(report.total_fcfa)}</span>
                 </div>
               </div>
