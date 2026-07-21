@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { OnboardingModal } from './OnboardingModal';
+import { APP_SHORT_CODE } from '@/lib/branding';
 
 // Enveloppe cliente : décide si la sidebar doit s'afficher selon la route.
 // La sidebar (Server Component, lit le cookie de rôle) est passée en prop
@@ -59,7 +60,7 @@ export default function AppShell({ sidebar, children }: {
             </svg>
           </button>
           <span className="ml-3 text-xs font-black text-white tracking-wider font-[family-name:var(--font-syne)]">
-            TMS-CI
+            {APP_SHORT_CODE}
           </span>
         </div>
 

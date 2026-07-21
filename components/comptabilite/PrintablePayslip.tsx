@@ -1,6 +1,7 @@
 'use client';
 
 import { Payslip } from '@/hooks/useComptabilite';
+import { APP_FULL_NAME } from '@/lib/branding';
 
 function formatFCFA(n: number): string {
   return new Intl.NumberFormat('fr-FR').format(Math.round(n)) + ' FCFA';
@@ -26,7 +27,7 @@ export function PrintablePayslip({ payslip }: { payslip: Payslip }) {
   return (
     <div className="bg-white text-black w-[500px] mx-auto p-8 font-sans">
       <div className="text-center border-b-2 border-black pb-3 mb-3">
-        <p className="text-lg font-black tracking-wide">TMS — CÔTE D&apos;IVOIRE</p>
+        <p className="text-lg font-black tracking-wide uppercase">{APP_FULL_NAME}</p>
         <p className="text-xs">Bulletin de paie — {formatPeriod(payslip.period)}</p>
       </div>
 

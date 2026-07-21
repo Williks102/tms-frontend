@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTrackParcel } from '@/hooks/useColis';
+import { APP_FULL_NAME } from '@/lib/branding';
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -44,7 +45,7 @@ export default function SuiviColisPage() {
     <div className="min-h-screen bg-[#060A14] p-4 sm:p-6 flex flex-col items-center">
       <div className="w-full max-w-md mt-10">
         <div className="text-center mb-8">
-          <p className="text-xs font-black text-white tracking-widest uppercase font-[family-name:var(--font-syne)]">TMS — Côte d&apos;Ivoire</p>
+          <p className="text-xs font-black text-white tracking-widest uppercase font-[family-name:var(--font-syne)]">{APP_FULL_NAME}</p>
           <h1 className="text-xl font-bold text-white mt-2 font-[family-name:var(--font-syne)]">Suivi de colis</h1>
           <p className="text-xs text-slate-500 mt-1">Entrez votre numéro de suivi pour connaître le statut de votre envoi</p>
         </div>

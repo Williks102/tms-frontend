@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { APP_FULL_NAME } from '@/lib/branding';
 
 const ACTIONS = [
   {
@@ -61,7 +62,7 @@ export default function HomePage() {
             <span className="text-2xl font-black text-blue-400 font-[family-name:var(--font-syne)]">T</span>
           </div>
           <h1 className="text-2xl font-black text-white font-[family-name:var(--font-syne)] tracking-tight">
-            TMS — Côte d&apos;Ivoire
+            {APP_FULL_NAME}
           </h1>
           <p className="text-slate-500 text-sm mt-1">Transport Management System</p>
         </div>

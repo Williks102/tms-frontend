@@ -5,6 +5,7 @@ import { usePublicRoutes, usePublicDepartures, PAYMENT_CHANNELS } from '@/hooks/
 import { apiFetchPublic, formatFCFA, PublicRoute } from '@/lib/api';
 import { Field } from '@/components/ui/Field';
 import { Ticket } from '@/hooks/useTickets';
+import { APP_FULL_NAME } from '@/lib/branding';
 
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
@@ -86,7 +87,7 @@ export default function BilletsPage() {
     <div className="min-h-screen bg-[#060A14] p-4 sm:p-6">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8 pt-4">
-          <p className="text-xs text-slate-500 uppercase tracking-widest font-[family-name:var(--font-syne)]">TMS · Côte d'Ivoire</p>
+          <p className="text-xs text-slate-500 uppercase tracking-widest font-[family-name:var(--font-syne)]">{APP_FULL_NAME}</p>
           <h1 className="text-2xl font-bold text-white font-[family-name:var(--font-syne)] mt-1">
             Achetez votre billet en ligne
           </h1>

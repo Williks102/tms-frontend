@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { landingPageFor, isKnownRole } from '@/lib/pageAccess';
 import { withCsrfHeader } from '@/lib/csrf';
 import { saveUser, saveRoleToCookie } from '@/lib/auth';
+import { APP_FULL_NAME } from '@/lib/branding';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/v1', '') || 'http://localhost:8000/api';
 
@@ -89,7 +90,7 @@ export default function LoginPage() {
             <span className="text-2xl font-black text-blue-400 font-[family-name:var(--font-syne)]">T</span>
           </div>
           <h1 className="text-2xl font-black text-white font-[family-name:var(--font-syne)] tracking-tight">
-            TMS — Côte d'Ivoire
+            {APP_FULL_NAME}
           </h1>
           <p className="text-slate-500 text-sm mt-1">Transport Management System</p>
         </div>

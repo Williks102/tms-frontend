@@ -1,6 +1,7 @@
 'use client';
 
 import { Parcel } from '@/hooks/useColis';
+import { APP_FULL_NAME } from '@/lib/branding';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -33,7 +34,7 @@ export function PrintableParcelReceipt({ parcel, qrDataUrl, variant }: Printable
     return (
       <div className="bg-white text-black w-[380px] mx-auto p-8 font-sans">
         <div className="text-center border-b-2 border-black pb-3 mb-3">
-          <p className="text-lg font-black tracking-wide">TMS — CÔTE D&apos;IVOIRE</p>
+          <p className="text-lg font-black tracking-wide uppercase">{APP_FULL_NAME}</p>
           <p className="text-xs">Étiquette colis</p>
         </div>
 
@@ -62,7 +63,7 @@ export function PrintableParcelReceipt({ parcel, qrDataUrl, variant }: Printable
   return (
     <div className="bg-white text-black w-[380px] mx-auto p-8 font-sans">
       <div className="text-center border-b-2 border-black pb-3 mb-3">
-        <p className="text-lg font-black tracking-wide">TMS — CÔTE D&apos;IVOIRE</p>
+        <p className="text-lg font-black tracking-wide uppercase">{APP_FULL_NAME}</p>
         <p className="text-xs">Reçu d&apos;expédition — service courrier</p>
       </div>
 

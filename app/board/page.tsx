@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { useBoardLive, useBoardStations } from '@/hooks/useBoard';
 import { BoardDeparture } from '@/lib/api';
 import { LiveClock } from '@/components/board/LiveClock';
+import { APP_FULL_NAME } from '@/lib/branding';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function formatTime(iso: string | null): string {
@@ -96,7 +97,7 @@ function BoardContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-sm text-slate-500 uppercase tracking-widest font-[family-name:var(--font-syne)]">TMS · Côte d'Ivoire</div>
+          <div className="text-sm text-slate-500 uppercase tracking-widest font-[family-name:var(--font-syne)]">{APP_FULL_NAME}</div>
           <h1 className="text-4xl font-bold text-white font-[family-name:var(--font-syne)] mt-1">
             {data?.station?.name ?? 'Toutes les gares'}
           </h1>

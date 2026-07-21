@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { Syne, JetBrains_Mono } from 'next/font/google';
 import { PAGE_ACCESS, isKnownRole } from '@/lib/pageAccess';
+import { APP_NAME, APP_REGION, APP_SHORT_CODE } from '@/lib/branding';
 import './globals.css';
 
 const syne = Syne({
@@ -18,8 +19,8 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title:       'TMS — Transport Management System',
-  description: 'Tableau de bord opérationnel — Côte d\'Ivoire',
+  title:       `${APP_NAME} — Transport Management System`,
+  description: `Tableau de bord opérationnel — ${APP_REGION}`,
 };
 
 // ── Composant sidebar (Server Component) ──────────────────────────────────
@@ -60,7 +61,7 @@ async function Sidebar() {
           </div>
           <div>
             <p className="text-xs font-black text-white tracking-wider font-[family-name:var(--font-syne)]">
-              TMS-CI
+              {APP_SHORT_CODE}
             </p>
             <p className="text-[9px] text-slate-600 font-[family-name:var(--font-mono)]">
               Transport Management
