@@ -6,6 +6,7 @@ import { AuthUser, getUser, logout } from '@/lib/auth';
 const ROLE_LABELS: Record<string, string> = {
   dg: 'DG', manager: 'Manager', dispatcher: 'Dispatcher', rh: 'RH', caissier: 'Caissier',
   driver: 'Chauffeur', controleur: 'Contrôleur', comptable: 'Comptable', agent_colis: 'Agent colis',
+  super_admin: 'Super Admin',
 };
 
 export default function LogoutButton() {

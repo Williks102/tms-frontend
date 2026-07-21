@@ -45,6 +45,7 @@ async function Sidebar() {
     { href: '/driver',        icon: '🚐', label: 'Mon espace'   },
     { href: '/caisse',        icon: '💰', label: 'Ma caisse'    },
     { href: '/controle',      icon: '📷', label: 'Contrôle'     },
+    { href: '/super-admin',   icon: '🔐', label: 'Super Admin'  },
   ];
 
   const navLinks = allNavLinks.filter(
