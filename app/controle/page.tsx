@@ -227,16 +227,20 @@ export default function ControlePage() {
 
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [scanning, setScanning] = useState(false);
-  const [manifestId, setManifestId] = useState<number | null>(null);
+  // Un seul départ sélectionné, partagé entre le scan et le manifeste — le
+  // scan doit être fait dans le contexte d'un départ précis (runbook sécurité
+  // v3, point 4) : sans ça, un billet d'un autre trajet en embarquement
+  // simultané passait le scan sans erreur.
+  const [departureId, setDepartureId] = useState<number | null>(null);
   const { data: stats, mutate: mutateStats } = useScanStats();
 
   const handleDetect = async (reference: string) => {
-    if (scanning) return;
+    if (scanning || !departureId) return;
     setScanning(true);
     try {
       const result = await apiFetch<{ ticket: Ticket }>('/tickets/scan', {
         method: 'POST',
-        body: JSON.stringify({ reference }),
+        body: JSON.stringify({ reference, departure_id: departureId }),
       } as RequestInit);
       setScanResult({ kind: 'success', ticket: result.ticket });
       mutateStats();
@@ -267,7 +271,20 @@ export default function ControlePage() {
       </header>
 
       <div className="p-4 sm:p-6 max-w-xl mx-auto space-y-4">
-        <TicketScanner onDetect={handleDetect} disabled={scanning} />
+        <div className="bg-[#080D1A] border border-slate-800/60 rounded-xl p-4">
+          <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-3 font-[family-name:var(--font-syne)]">
+            Départ en embarquement (obligatoire avant de scanner)
+          </p>
+          <ManifestDeparturePicker departureId={departureId} onSelect={setDepartureId} />
+        </div>
+
+        {!departureId && (
+          <p className="text-center text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+            Sélectionnez le départ devant lequel vous vous trouvez avant de scanner un billet.
+          </p>
+        )}
+
+        <TicketScanner onDetect={handleDetect} disabled={scanning || !departureId} />
         {scanResult && <ScanResultCard result={scanResult} />}
       </div>
 
@@ -275,13 +292,8 @@ export default function ControlePage() {
         <p className="text-[10px] text-slate-500 uppercase tracking-widest px-4 sm:px-6 pt-4 font-[family-name:var(--font-syne)]">
           Manifeste d'embarquement
         </p>
-        <div className="flex flex-col lg:flex-row">
-          <div className="w-full lg:w-72 flex-shrink-0 p-4 sm:p-6">
-            <ManifestDeparturePicker departureId={manifestId} onSelect={setManifestId} />
-          </div>
-          <div className="flex-1 bg-[#060A14]">
-            <ManifestPanel departureId={manifestId} canWrite={canWrite} />
-          </div>
+        <div className="flex-1 bg-[#060A14]">
+          <ManifestPanel departureId={departureId} canWrite={canWrite} />
         </div>
       </div>
     </div>

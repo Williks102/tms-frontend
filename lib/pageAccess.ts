@@ -2,7 +2,7 @@
 // Utilisé à la fois par proxy.ts (edge) et app/layout.tsx (Server Component) :
 // pas de 'use client', pas d'API navigateur — doit rester exécutable des deux côtés.
 
-export type Role = 'dg' | 'manager' | 'dispatcher' | 'rh' | 'caissier' | 'driver' | 'controleur' | 'comptable' | 'agent_colis' | 'super_admin';
+export type Role = 'dg' | 'manager' | 'dispatcher' | 'rh' | 'caissier' | 'driver' | 'controleur' | 'comptable' | 'agent_colis' | 'agent_fret' | 'super_admin';
 
 // Chaque entrée liste les rôles autorisés à voir la page (et ses sous-routes).
 // Une page absente de cette liste (ex: /login) n'est pas filtrée ici.
@@ -24,6 +24,7 @@ export const PAGE_ACCESS: Record<string, Role[]> = {
   '/controle':      ['manager', 'controleur'],
   '/comptabilite':  ['manager', 'rh', 'comptable'],
   '/colis':         ['manager', 'agent_colis'],
+  '/fret':          ['manager', 'agent_fret'],
   '/audit':         ['manager', 'dg'],
   '/mes-saisies':   ['manager', 'dispatcher'],
   // Réservé au porteur du projet — jamais assignable via la création de
@@ -46,6 +47,7 @@ export const LANDING_PAGE: Record<Role, string> = {
   controleur:  '/controle',
   comptable:   '/comptabilite',
   agent_colis: '/colis',
+  agent_fret:  '/fret',
   super_admin: '/super-admin',
 };
 
@@ -64,5 +66,5 @@ export function canAccessPage(role: Role | null | undefined, pathname: string): 
 }
 
 export function isKnownRole(value: string | undefined): value is Role {
-  return value === 'dg' || value === 'manager' || value === 'dispatcher' || value === 'rh' || value === 'caissier' || value === 'driver' || value === 'controleur' || value === 'comptable' || value === 'agent_colis' || value === 'super_admin';
+  return value === 'dg' || value === 'manager' || value === 'dispatcher' || value === 'rh' || value === 'caissier' || value === 'driver' || value === 'controleur' || value === 'comptable' || value === 'agent_colis' || value === 'agent_fret' || value === 'super_admin';
 }

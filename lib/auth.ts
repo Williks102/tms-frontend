@@ -8,7 +8,7 @@
 // ══════════════════════════════════════════════════════════════════════════
 import { withCsrfHeader } from './csrf';
 
-export type Role = 'dg' | 'manager' | 'dispatcher' | 'rh' | 'caissier' | 'driver' | 'controleur' | 'comptable' | 'agent_colis' | 'super_admin';
+export type Role = 'dg' | 'manager' | 'dispatcher' | 'rh' | 'caissier' | 'driver' | 'controleur' | 'comptable' | 'agent_colis' | 'agent_fret' | 'super_admin';
 
 export interface AuthUser {
   name:  string;

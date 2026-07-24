@@ -40,6 +40,7 @@ async function Sidebar() {
     { href: '/hr',            icon: '🧑‍💼', label: 'RH'           },
     { href: '/comptabilite',  icon: '📊', label: 'Comptabilité' },
     { href: '/colis',         icon: '📦', label: 'Colis'        },
+    { href: '/fret',          icon: '🚛', label: 'Fret'         },
     { href: '/audit',         icon: '🛡️', label: 'Audit'        },
     { href: '/mes-saisies',   icon: '📝', label: 'Mes saisies'  },
     { href: '/driver',        icon: '🚐', label: 'Mon espace'   },

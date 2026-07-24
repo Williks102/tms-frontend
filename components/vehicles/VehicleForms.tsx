@@ -12,6 +12,7 @@ interface FormProps {
 export function FormCreateVehicle({ onSuccess }: FormProps) {
   const [form, setForm] = useState({
     plate_number: '',
+    type: 'bus' as 'bus' | 'truck',
     model: '',
     capacity: '',
     fuel_consumption_per_100km: '',
@@ -31,7 +32,8 @@ export function FormCreateVehicle({ onSuccess }: FormProps) {
         method: 'POST',
         body: JSON.stringify({
           ...form,
-          capacity: Number(form.capacity),
+          // Un camion n'a pas de places assises — 0 si non renseigné.
+          capacity: form.capacity ? Number(form.capacity) : 0,
           fuel_consumption_per_100km: Number(form.fuel_consumption_per_100km),
           current_mileage_km: form.current_mileage_km ? Number(form.current_mileage_km) : 0,
           maintenance_interval_km: form.maintenance_interval_km ? Number(form.maintenance_interval_km) : 10000,
@@ -51,15 +53,23 @@ export function FormCreateVehicle({ onSuccess }: FormProps) {
     <form onSubmit={handleSubmit} className="space-y-3">
       {message && <p className="text-xs text-emerald-400">{message}</p>}
       <div className="grid grid-cols-2 gap-3">
+        <Field label="Type de véhicule" description="Camion = module Fret">
+          <select className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as 'bus' | 'truck' })}>
+            <option value="bus">Bus (passagers)</option>
+            <option value="truck">Camion (fret)</option>
+          </select>
+        </Field>
         <Field label="Plaque d'immatriculation" description="Ex: CI-1234-AB">
           <input className="input" placeholder="CI-1234-AB" value={form.plate_number} onChange={(e) => setForm({ ...form, plate_number: e.target.value })} />
         </Field>
         <Field label="Modèle">
           <input className="input" placeholder="Mercedes-Benz Tourismo" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} />
         </Field>
-        <Field label="Capacité (places)">
-          <input type="number" className="input" placeholder="49" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
-        </Field>
+        {form.type === 'bus' && (
+          <Field label="Capacité (places)">
+            <input type="number" className="input" placeholder="49" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
+          </Field>
+        )}
         <Field label="Consommation théorique (L/100km)">
           <input type="number" className="input" placeholder="28.5" value={form.fuel_consumption_per_100km} onChange={(e) => setForm({ ...form, fuel_consumption_per_100km: e.target.value })} />
         </Field>
@@ -83,6 +93,7 @@ export function FormCreateVehicle({ onSuccess }: FormProps) {
 export function FormEditVehicle({ vehicle, onSuccess }: { vehicle: Vehicle; onSuccess?: () => void }) {
   const [form, setForm] = useState({
     plate_number: vehicle.plate_number,
+    type: vehicle.type,
     model: vehicle.model,
     capacity: String(vehicle.capacity),
     fuel_consumption_per_100km: String(vehicle.fuel_consumption_per_100km),
@@ -124,13 +135,19 @@ export function FormEditVehicle({ vehicle, onSuccess }: { vehicle: Vehicle; onSu
     <form onSubmit={handleSubmit} className="space-y-3">
       {message && <p className="text-xs text-emerald-400">{message}</p>}
       <div className="grid grid-cols-2 gap-3">
+        <Field label="Type de véhicule" description="Camion = module Fret">
+          <select className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as 'bus' | 'truck' })}>
+            <option value="bus">Bus (passagers)</option>
+            <option value="truck">Camion (fret)</option>
+          </select>
+        </Field>
         <Field label="Plaque d'immatriculation">
           <input className="input" value={form.plate_number} onChange={(e) => setForm({ ...form, plate_number: e.target.value })} />
         </Field>
         <Field label="Modèle">
           <input className="input" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} />
         </Field>
-        <Field label="Capacité (places)">
+        <Field label="Capacité (places)" description={form.type === 'truck' ? 'Sans objet pour un camion — laisser à 0' : undefined}>
           <input type="number" className="input" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
         </Field>
         <Field label="Consommation théorique (L/100km)">

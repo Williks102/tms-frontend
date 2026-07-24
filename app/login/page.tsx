@@ -183,6 +183,7 @@ export default function LoginPage() {
                   { role: 'Contrôleur', email: 'controleur@tms-ci.com' },
                   { role: 'Comptable',  email: 'comptable@tms-ci.com'  },
                   { role: 'Agent colis', email: 'colis@tms-ci.com'     },
+                  { role: 'Agent fret', email: 'fret@tms-ci.com'       },
                   { role: 'Chauffeur',  email: 'ch-2022-001@tms-ci.com'},
                 ].map(account => (
                   <button

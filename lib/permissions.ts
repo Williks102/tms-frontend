@@ -19,6 +19,7 @@ export const PERMISSIONS = {
   hrManage:         ['manager', 'rh']       as Role[], // congés, disciplinaire — module /hr
   comptaWrite:      ['manager', 'comptable'] as Role[], // écritures, bons de caisse, paie — module /comptabilite
   colisWrite:       ['manager', 'agent_colis'] as Role[], // enregistrement, scan, retrait — module /colis
+  fretWrite:        ['manager', 'agent_fret'] as Role[], // clients, expéditions, encaissement — module /fret
 } as const;
 
 export type PermissionKey = keyof typeof PERMISSIONS;

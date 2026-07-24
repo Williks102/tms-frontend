@@ -7,6 +7,7 @@ import { apiFetch } from '@/lib/api';
 export interface Vehicle {
   id:                          number;
   plate_number:                string;
+  type:                        'bus' | 'truck';
   model:                       string;
   capacity:                    number;
   fuel_consumption_per_100km:  number;
